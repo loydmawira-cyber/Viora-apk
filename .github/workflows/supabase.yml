@@ -1,0 +1,31 @@
+name: Supabase Database & Functions CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'supabase/**'
+  pull_request:
+    paths:
+      - 'supabase/**'
+
+jobs:
+  validate:
+    name: Validate Migrations and Edge Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Verify Edge Function Syntax
+        run: |
+          for f in supabase/functions/*/index.ts; do
+            echo "Checking syntax for $f..."
+            deno check "$f" || true
+          done

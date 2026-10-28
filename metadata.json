@@ -1,0 +1,6 @@
+{
+  "name": "Viora",
+  "description": "Go live. Find your people. Live-streaming social app with broadcasts, real-time chat, virtual gifts, and creator earnings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
