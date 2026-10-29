@@ -178,6 +178,10 @@ object SupabaseApi {
     suspend fun rpc(name: String, args: JSONObject = JSONObject()): String =
         authed("POST", "/rest/v1/rpc/$name", args.toString())
 
+    /** Calls a Supabase Edge Function as the signed-in user. */
+    suspend fun invokeFunction(name: String, body: JSONObject): String =
+        authed("POST", "/functions/v1/$name", body.toString())
+
     suspend fun select(pathAndQuery: String): JSONArray =
         JSONArray(authed("GET", "/rest/v1/$pathAndQuery"))
 
