@@ -39,6 +39,7 @@ fun AuthScreen(
     var isSignUp by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var ageConfirmed by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
@@ -115,7 +116,11 @@ fun AuthScreen(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (!isSignUp) VioraElectricPurple else Color.Transparent)
-                        .clickable { isSignUp = false }
+                        .clickable {
+                            isSignUp = false
+                            errorText = null
+                            infoText = null
+                        }
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 ) {
                     Text(
@@ -130,7 +135,11 @@ fun AuthScreen(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (isSignUp) VioraElectricPurple else Color.Transparent)
-                        .clickable { isSignUp = true }
+                        .clickable {
+                            isSignUp = true
+                            errorText = null
+                            infoText = null
+                        }
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 ) {
                     Text(
@@ -209,6 +218,52 @@ fun AuthScreen(
                     )
 
                     if (isSignUp) {
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            label = { Text("Confirm password") },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = VioraElectricPurple) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("confirm_password_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = VioraElectricPurple,
+                                unfocusedBorderColor = VioraBorder,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    } else {
+                        Text(
+                            text = "Forgot password?",
+                            color = VioraCoral,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .clickable {
+                                    errorText = null
+                                    infoText = null
+                                    if (email.isBlank()) {
+                                        errorText = "Enter your email address first."
+                                    } else {
+                                        loading = true
+                                        authScope.launch {
+                                            VioraRepository.requestPasswordReset(email.trim())
+                                                .onSuccess {
+                                                    infoText = "If an account exists for that email, password reset instructions have been sent."
+                                                }
+                                                .onFailure { errorText = it.message ?: "Could not send the reset email. Try again." }
+                                            loading = false
+                                        }
+                                    }
+                                }
+                        )
+                    }
+
+                    if (isSignUp) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
@@ -231,6 +286,9 @@ fun AuthScreen(
                     }
                     if (isSignUp && password.isNotEmpty() && password.length < 8) {
                         Text("Password needs at least 8 characters.", color = VioraMutedText, fontSize = 11.sp)
+                    }
+                    if (isSignUp && confirmPassword.isNotEmpty() && password != confirmPassword) {
+                        Text("Passwords do not match.", color = VioraErrorRed, fontSize = 11.sp)
                     }
                     errorText?.let { Text(it, color = VioraErrorRed, fontSize = 12.sp) }
                     infoText?.let { Text(it, color = VioraSuccessGreen, fontSize = 12.sp) }
@@ -263,7 +321,7 @@ fun AuthScreen(
                             }
                         },
                         enabled = !loading && email.isNotBlank() &&
-                            (if (isSignUp) (password.length >= 8 && ageConfirmed && usernameOk) else password.isNotBlank()),
+                            (if (isSignUp) (password.length >= 8 && password == confirmPassword && ageConfirmed && usernameOk) else password.isNotBlank()),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
