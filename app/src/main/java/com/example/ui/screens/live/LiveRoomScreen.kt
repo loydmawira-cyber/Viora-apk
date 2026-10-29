@@ -1,6 +1,14 @@
 package com.example.ui.screens.live
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.AgoraSession
+import com.example.data.AgoraState
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -73,6 +81,36 @@ fun LiveRoomScreen(
     var isCameraFront by remember { mutableStateOf(true) }
     var isVideoPaused by remember { mutableStateOf(false) }
 
+    // ---- Agora live video/audio ----
+    // Only the room's real host publishes. Viewers and silent moderators join as audience.
+    val context = LocalContext.current
+    val isHost = currentStream.hostId == currentUser.id && !isSilentModerator
+    val agora = remember(stream.id, isHost) { AgoraSession(context, stream.id, isHost) }
+    var mediaPermissionDenied by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val granted = results[Manifest.permission.CAMERA] == true &&
+            results[Manifest.permission.RECORD_AUDIO] == true
+        mediaPermissionDenied = !granted
+        if (granted) agora.start(coroutineScope)
+    }
+
+    LaunchedEffect(agora) {
+        if (!agora.isAvailable) return@LaunchedEffect
+        if (!isHost) {
+            agora.start(coroutineScope)
+        } else {
+            val needed = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+            val allGranted = needed.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+            if (allGranted) agora.start(coroutineScope) else permissionLauncher.launch(needed)
+        }
+    }
+    DisposableEffect(agora) { onDispose { agora.release() } }
+
     // Auto-scroll chat to latest message
     // Real backend: pull new chat messages every couple of seconds while the room is open.
     LaunchedEffect(stream.id) {
@@ -117,6 +155,44 @@ fun LiveRoomScreen(
             isVideoPaused = isVideoPaused,
             isFrontCamera = isCameraFront
         )
+
+        // Real Agora video sits above the placeholder (hidden while the host has paused video).
+        if (agora.isAvailable && !(isHost && isVideoPaused)) {
+            AgoraVideoSurface(session = agora, modifier = Modifier.fillMaxSize())
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.55f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.78f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        // Connection / permission status for the live video
+        val agoraNotice: String? = when {
+            isHost && mediaPermissionDenied -> "Camera and microphone access is needed to broadcast. Allow it in Settings."
+            agora.state == AgoraState.FAILED -> agora.errorMessage ?: "Live video unavailable"
+            agora.state == AgoraState.CONNECTING -> "Connecting to live video…"
+            else -> null
+        }
+        if (agoraNotice != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(agoraNotice, color = Color.White, fontSize = 13.sp)
+            }
+        }
 
         if (isSilentModerator) {
             Box(
@@ -231,7 +307,7 @@ fun LiveRoomScreen(
                                     .clip(CircleShape)
                                     .background(VioraSuccessGreen)
                             )
-                            Text("Agora HD", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text(if (agora.state == AgoraState.CONNECTED) "Agora HD" else "Demo", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -491,7 +567,10 @@ fun LiveRoomScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(VioraSurfaceVariant)
-                            .clickable { isCameraFront = !isCameraFront }
+                            .clickable {
+                                isCameraFront = !isCameraFront
+                                agora.switchCamera()
+                            }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -506,7 +585,10 @@ fun LiveRoomScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(VioraSurfaceVariant)
-                            .clickable { isMicMuted = !isMicMuted }
+                            .clickable {
+                                isMicMuted = !isMicMuted
+                                agora.setMicMuted(isMicMuted)
+                            }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -521,7 +603,10 @@ fun LiveRoomScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(VioraSurfaceVariant)
-                            .clickable { isVideoPaused = !isVideoPaused }
+                            .clickable {
+                                isVideoPaused = !isVideoPaused
+                                agora.setVideoPaused(isVideoPaused)
+                            }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
