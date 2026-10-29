@@ -258,6 +258,13 @@ object VioraRepository {
         }
     }
 
+    suspend fun requestPasswordReset(email: String): Result<Unit> {
+        if (!SupabaseApi.isConfigured) {
+            return Result.failure(IllegalStateException("Supabase is not configured in this APK. Rebuild with the root .env file."))
+        }
+        return runCatching { SupabaseApi.requestPasswordReset(email) }
+    }
+
     /** Success(true) = signed in. Success(false) = account created, email confirmation needed. */
     suspend fun signUp(username: String, email: String, pass: String): Result<Boolean> {
         if (!SupabaseApi.isConfigured) {

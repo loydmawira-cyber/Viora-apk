@@ -89,6 +89,12 @@ object SupabaseApi {
         saveSession(JSONObject(text))
     }
 
+    /** Sends Supabase's password-recovery email; redirect behavior follows the Supabase project settings. */
+    suspend fun requestPasswordReset(email: String) {
+        val body = JSONObject().put("email", email)
+        safe { call("POST", "/auth/v1/recover", body.toString()) }
+    }
+
     /** True when the session was refreshed. False when the saved session is no longer valid. */
     suspend fun refresh(): Boolean = refreshLock.withLock {
         val rt = refreshToken ?: return false
