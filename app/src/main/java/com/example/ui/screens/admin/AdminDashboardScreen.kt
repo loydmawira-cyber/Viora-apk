@@ -43,7 +43,7 @@ fun AdminDashboardScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(VioraDarkBg)
+            .background(VioraAppBg)
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(16.dp)
@@ -116,14 +116,14 @@ fun AdminDashboardScreen(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) VioraElectricPurple else Color.Transparent)
+                        .background(if (isSelected) VioraPrimaryChampagneGold else Color.Transparent)
                         .clickable { selectedAdminTab = index }
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = title,
-                        color = if (isSelected) Color.White else VioraMutedText,
+                        color = if (isSelected) Color.Black else VioraSecondaryText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
