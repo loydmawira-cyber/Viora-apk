@@ -1,5 +1,6 @@
 package com.example.data
 
+import android.net.Uri
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -218,9 +219,13 @@ object VioraRepository {
     // ---- Real backend (Supabase) -------------------------------------------------
 
     /** Call once from MainActivity. Restores a saved session when a backend is configured. */
-    fun init(context: android.content.Context) {
+    fun init(context: android.content.Context, skipSessionRestore: Boolean = false) {
         SupabaseApi.init(context)
         if (!SupabaseApi.isConfigured) {
+            _isRestoring.value = false
+            return
+        }
+        if (skipSessionRestore) {
             _isRestoring.value = false
             return
         }
@@ -263,6 +268,18 @@ object VioraRepository {
             return Result.failure(IllegalStateException("Supabase is not configured in this APK. Rebuild with the root .env file."))
         }
         return runCatching { SupabaseApi.requestPasswordReset(email) }
+    }
+
+    suspend fun acceptPasswordRecoveryLink(uri: Uri): Result<Unit> {
+        if (!SupabaseApi.isConfigured) {
+            return Result.failure(IllegalStateException("Supabase is not configured in this APK. Rebuild with the root .env file."))
+        }
+        return runCatching { SupabaseApi.acceptPasswordRecoveryLink(uri) }
+    }
+
+    suspend fun updatePassword(password: String): Result<Unit> = runCatching {
+        SupabaseApi.updatePassword(password)
+        loadAccount()
     }
 
     /** Success(true) = signed in. Success(false) = account created, email confirmation needed. */
