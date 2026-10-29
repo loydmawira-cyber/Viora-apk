@@ -70,7 +70,7 @@ fun NotificationsScreen(
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = 80.dp)
+            contentPadding = PaddingValues(bottom = 12.dp)
         ) {
             items(SAMPLE_NOTIFICATIONS) { notif ->
                 Card(
