@@ -40,6 +40,11 @@ private val SAMPLE_NOTIFICATIONS = listOf(
 fun NotificationsScreen(
     modifier: Modifier = Modifier
 ) {
+    val announcements by com.example.data.VioraRepository.announcements.collectAsState()
+    val allNotifications = announcements.map {
+        VioraNotification("ann_${it.id}", it.title, it.body, "new", "📣", true)
+    } + SAMPLE_NOTIFICATIONS
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -72,7 +77,7 @@ fun NotificationsScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 12.dp)
         ) {
-            items(SAMPLE_NOTIFICATIONS) { notif ->
+            items(allNotifications) { notif ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
