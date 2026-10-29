@@ -19,5 +19,7 @@ data class User(
     val followersCount: Int = 1420,
     val followingCount: Int = 230,
     val isVerified: Boolean = false,
-    val level: Int = 12
+    val level: Int = 12,
+    val isBanned: Boolean = false,
+    val createdAtMs: Long = System.currentTimeMillis()
 )

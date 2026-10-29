@@ -7,7 +7,8 @@ data class VirtualGift(
     val coinCost: Long,
     val description: String,
     val animationType: String = "POP",
-    val soundEffect: String = "ding"
+    val soundEffect: String = "ding",
+    val isActive: Boolean = true
 )
 
 val DEFAULT_GIFTS = listOf(

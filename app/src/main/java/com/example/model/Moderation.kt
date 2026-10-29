@@ -25,5 +25,11 @@ data class ModerationReport(
     val category: ReportCategory,
     val notes: String,
     val status: ReportStatus = ReportStatus.PENDING_REVIEW,
-    val timestampMs: Long = System.currentTimeMillis()
+    val timestampMs: Long = System.currentTimeMillis(),
+    val escalated: Boolean = false,
+    val escalationNote: String = "",
+    val assignedToName: String = "",
+    val assignedToId: String = "",
+    val resolvedByName: String = "",
+    val resolvedMs: Long = 0L
 )

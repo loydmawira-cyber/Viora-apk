@@ -18,7 +18,8 @@ data class CoinPackage(
     val id: String,
     val coins: Long,
     val bonusCoins: Long = 0,
-    val priceUsd: String
+    val priceUsd: String,
+    val isActive: Boolean = true
 )
 
 val COIN_PACKAGES = listOf(
@@ -50,5 +51,7 @@ data class WithdrawalRequest(
     val payoutMethod: String,
     val payoutDestination: String,
     val status: TransactionStatus = TransactionStatus.PENDING,
-    val requestedAtEpochMs: Long = System.currentTimeMillis()
+    val requestedAtEpochMs: Long = System.currentTimeMillis(),
+    val holdUntilMs: Long = 0L,
+    val approvals: List<String> = emptyList()
 )
