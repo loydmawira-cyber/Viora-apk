@@ -3,6 +3,8 @@ package com.example.ui.screens.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,9 +20,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -69,85 +75,144 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Brand Logo & Header
+            // Live-stage brand banner with soft spotlights and a subtle equalizer field.
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(26.dp))
                     .background(
-                        Brush.linearGradient(
-                            listOf(VioraElectricPurple, VioraCoral)
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFF21103B), Color(0xFF170D2A), Color(0xFF130B22))
                         )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "V",
-                    color = Color.White,
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Black
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Viora",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = "Go live. Find your people.",
-                    color = VioraCoral,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            // Sign In / Sign Up Tab Toggle
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(VioraCardDark)
-                    .padding(4.dp)
+                    )
+                    .border(1.dp, Color(0x557B37E8), RoundedCornerShape(26.dp))
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (!isSignUp) VioraElectricPurple else Color.Transparent)
-                        .clickable {
-                            isSignUp = false
-                            errorText = null
-                            infoText = null
-                        }
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "Sign In",
-                        color = if (!isSignUp) Color.White else VioraMutedText,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
+                        .size(220.dp)
+                        .offset(x = (-90).dp, y = (-110).dp)
+                        .background(
+                            Brush.radialGradient(listOf(Color(0x55FF3E9D), Color.Transparent)),
+                            CircleShape
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .size(240.dp)
+                        .align(Alignment.TopEnd)
+                        .offset(x = 95.dp, y = (-125).dp)
+                        .background(
+                            Brush.radialGradient(listOf(Color(0x664B2CFF), Color.Transparent)),
+                            CircleShape
+                        )
+                )
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val count = 44
+                    val gap = size.width * 0.006f
+                    val barWidth = (size.width - gap * (count - 1)) / count
+                    val horizon = size.height * 0.72f
+                    for (i in 0 until count) {
+                        val centerDistance = kotlin.math.abs(i - (count - 1) / 2f) / (count / 2f)
+                        val rhythm = listOf(0.22f, 0.38f, 0.28f, 0.56f, 0.34f, 0.46f, 0.24f, 0.62f)[i % 8]
+                        val barHeight = size.height * rhythm * (1f - centerDistance * 0.52f)
+                        drawRoundRect(
+                            color = if (i % 3 == 0) Color(0x40FF4BBD) else Color(0x354B55FF),
+                            topLeft = Offset(i * (barWidth + gap), horizon - barHeight),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
+                        )
+                    }
                 }
-
-                Box(
+                Column(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSignUp) VioraElectricPurple else Color.Transparent)
-                        .clickable {
-                            isSignUp = true
-                            errorText = null
-                            infoText = null
-                        }
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .border(1.dp, Color(0xAA9F5CFF), RoundedCornerShape(18.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = com.example.R.drawable.viora_icon),
+                            contentDescription = "Viora app icon",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                     Text(
-                        text = "Create Account",
-                        color = if (isSignUp) Color.White else VioraMutedText,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
+                        text = "Viora",
+                        color = Color.White,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
                     )
+                    Text(
+                        text = "Go live. Find your people.",
+                        color = VioraCoral,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color(0xC6100C1B))
+                            .border(1.dp, Color(0x557D45C9), RoundedCornerShape(18.dp))
+                            .padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    if (!isSignUp) Brush.horizontalGradient(listOf(Color(0xFF872AFF), Color(0xFFCA27D9)))
+                                    else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                                )
+                                .clickable {
+                                    isSignUp = false
+                                    errorText = null
+                                    infoText = null
+                                }
+                                .padding(vertical = 13.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Sign In",
+                                color = if (!isSignUp) Color.White else VioraMutedText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    if (isSignUp) Brush.horizontalGradient(listOf(Color(0xFF872AFF), Color(0xFFCA27D9)))
+                                    else Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
+                                )
+                                .clickable {
+                                    isSignUp = true
+                                    errorText = null
+                                    infoText = null
+                                }
+                                .padding(vertical = 13.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Create Account",
+                                color = if (isSignUp) Color.White else VioraMutedText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
 
