@@ -226,7 +226,10 @@ object SupabaseApi {
             conn.connectTimeout = 15_000
             conn.readTimeout = 20_000
             conn.setRequestProperty("apikey", anonKey)
-            conn.setRequestProperty("Authorization", "Bearer " + (bearer ?: anonKey))
+            // Publishable keys (sb_publishable_...) are API keys, not JWTs. Only send
+            // Authorization for an authenticated user token, or a legacy anon JWT.
+            val authorizationToken = bearer ?: anonKey.takeIf { it.startsWith("eyJ") }
+            authorizationToken?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("Accept", "application/json")
             extra.forEach { (k, v) -> conn.setRequestProperty(k, v) }
