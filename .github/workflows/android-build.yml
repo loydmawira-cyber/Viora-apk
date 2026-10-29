@@ -43,8 +43,8 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           AGORA_APP_ID: ${{ secrets.AGORA_APP_ID }}
         run: |
-          # Start from the defaults in .env.example, then override only the secrets that are set.
-          cp .env.example .env
+          # Keep a repository-provided .env; use template defaults only when .env is absent.
+          if [ ! -f .env ]; then cp .env.example .env; fi
           [ -n "$SUPABASE_URL" ] && sed -i "s|^SUPABASE_URL=.*|SUPABASE_URL=$SUPABASE_URL|" .env
           [ -n "$SUPABASE_ANON_KEY" ] && sed -i "s|^SUPABASE_ANON_KEY=.*|SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY|" .env
           [ -n "$AGORA_APP_ID" ] && sed -i "s|^AGORA_APP_ID=.*|AGORA_APP_ID=$AGORA_APP_ID|" .env
