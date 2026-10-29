@@ -47,6 +47,7 @@ private val PRESET_MEDIA_SAMPLES = listOf(
 fun ProfileScreen(
     onNavigateToWallet: () -> Unit,
     onNavigateToAdmin: () -> Unit,
+    onNavigateToModeratorHub: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToBroadcastSetup: () -> Unit,
     onLogout: () -> Unit,
@@ -54,6 +55,7 @@ fun ProfileScreen(
 ) {
     val currentUser by VioraRepository.currentUser.collectAsState()
     val profileMediaList by VioraRepository.profileMedia.collectAsState()
+    LaunchedEffect(Unit) { VioraRepository.refreshAccount() }
 
     var showEditDialog by remember { mutableStateOf(false) }
     var showUploadDialog by remember { mutableStateOf(false) }
@@ -226,56 +228,6 @@ fun ProfileScreen(
             }
         }
 
-        // Live Role Switcher (For convenient MVP testing of all role requirements)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = VioraDeepViolet),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Switch Active Role (Testing)",
-                    color = VioraWarmGold,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Test the app experience as a Viewer, Broadcaster, Moderator, or Admin:",
-                    color = VioraMutedText,
-                    fontSize = 11.sp
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    UserRole.values().forEach { role ->
-                        val isSelected = currentUser.role == role
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) VioraCoral else VioraCardDark)
-                                .clickable { VioraRepository.switchRole(role) }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = role.name.take(4),
-                                color = if (isSelected) Color.White else VioraMutedText,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         // EXCLUSIVE MEDIA & POSTS SECTION (Photo/Video Uploads & Coin Unlock)
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -404,12 +356,21 @@ fun ProfileScreen(
 
         // Actions List
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Admin Dashboard Link (Always accessible if Admin)
+            if (currentUser.role == UserRole.MODERATOR || currentUser.role == UserRole.ADMIN) {
+                ProfileMenuRow(
+                    icon = Icons.Default.Shield,
+                    title = "Moderator Hub",
+                    subtitle = "Your tasks, reports & held chat",
+                    tint = VioraCoral,
+                    onClick = onNavigateToModeratorHub,
+                    testTag = "moderator_hub_menu"
+                )
+            }
             if (currentUser.role == UserRole.ADMIN) {
                 ProfileMenuRow(
                     icon = Icons.Default.AdminPanelSettings,
-                    title = "Admin Dashboard & Moderation Queue",
-                    subtitle = "Review reports, platform metrics & rooms",
+                    title = "Admin Console",
+                    subtitle = "Tasks, users, money, safety & kill switch",
                     tint = VioraWarmGold,
                     onClick = onNavigateToAdmin,
                     testTag = "admin_dashboard_menu"
