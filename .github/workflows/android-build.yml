@@ -37,6 +37,14 @@ jobs:
             -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Create .env from GitHub secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          AGORA_APP_ID: ${{ secrets.AGORA_APP_ID }}
+        run: |
+          printf 'SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\nAGORA_APP_ID=%s\n' "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$AGORA_APP_ID" > .env
+
       - name: Run Unit Tests
         run: gradle testDebugUnitTest --continue || true
 
