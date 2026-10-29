@@ -188,7 +188,11 @@ fun WalletScreen(
             0 -> BuyCoinsView(
                 onBuyPackage = { pkg ->
                     VioraRepository.buyCoinPackage(pkg)
-                    successToastMessage = "Purchased ${pkg.coins + pkg.bonusCoins} coins successfully!"
+                    successToastMessage = if (com.example.data.SupabaseApi.isConfigured) {
+                        "Coin purchases are not open yet."
+                    } else {
+                        "Purchased ${pkg.coins + pkg.bonusCoins} coins successfully!"
+                    }
                 }
             )
             1 -> CreatorEarningsView(
