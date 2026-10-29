@@ -30,8 +30,12 @@ import androidx.compose.ui.unit.sp
 import com.example.data.VioraRepository
 import com.example.model.Conversation
 import com.example.model.LiveStream
+import com.example.model.UserRole
 import com.example.ui.screens.admin.AdminConsoleScreen
 import com.example.ui.screens.admin.AdminDashboardScreen
+import com.example.ui.screens.auth.AppealScreen
+import com.example.ui.screens.moderation.ModeratorHubScreen
+import kotlinx.coroutines.delay
 import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.inbox.DirectChatScreen
@@ -53,16 +57,17 @@ enum class AppScreen {
     LIVE_ROOM,
     BROADCAST_SETUP,
     WALLET,
-    ADMIN_CONSOLE,
     ADMIN_DASHBOARD,
-    SETTINGS
+    SETTINGS,
+    MODERATOR_HUB,
+    ADMIN_CONSOLE
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        VioraRepository.init(this)
         enableEdgeToEdge()
+        VioraRepository.init(applicationContext)
         setContent {
             VioraTheme(darkTheme = true) {
                 VioraAppRoot()
@@ -74,31 +79,33 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun VioraAppRoot() {
     val isAuthenticated by VioraRepository.isAuthenticated.collectAsState()
-    val isRestoring by VioraRepository.isRestoring.collectAsState()
-    val currentUser by VioraRepository.currentUser.collectAsState()
 
     var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
     var activeLiveStream by remember { mutableStateOf<LiveStream?>(null) }
     var activeConversation by remember { mutableStateOf<Conversation?>(null) }
-    var showCreatorApply by remember { mutableStateOf(false) }
+    val currentUser by VioraRepository.currentUser.collectAsState()
+    val platformSettings by VioraRepository.settings.collectAsState()
+    val allStreams by VioraRepository.liveStreams.collectAsState()
     var notice by remember { mutableStateOf<String?>(null) }
+    var showCreatorApply by remember { mutableStateOf(false) }
+    var silentStreamId by remember { mutableStateOf<String?>(null) }
 
-    fun tryGoLive() {
-        if (currentUser.role == com.example.model.UserRole.VIEWER) {
-            showCreatorApply = true
-        } else {
-            currentScreen = AppScreen.BROADCAST_SETUP
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            delay(2800)
+            notice = null
         }
     }
 
-    if (isRestoring) {
+    val restoring by VioraRepository.isRestoring.collectAsState()
+    if (restoring) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(VioraAppBg),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = VioraPrimaryGold)
+            androidx.compose.material3.CircularProgressIndicator(color = VioraPrimaryChampagneGold)
         }
         return
     }
@@ -109,6 +116,25 @@ fun VioraAppRoot() {
             modifier = Modifier.fillMaxSize()
         )
         return
+    }
+
+    if (currentUser.isBanned) {
+        AppealScreen(
+            onSignOut = { VioraRepository.logout() },
+            modifier = Modifier.fillMaxSize()
+        )
+        return
+    }
+
+    // Go Live is allowed for approved creators and staff only, and never during a kill switch
+    val tryGoLive: () -> Unit = {
+        if (platformSettings.streamsPaused) {
+            notice = "Live streaming is temporarily paused by Viora"
+        } else if (currentUser.role == UserRole.VIEWER) {
+            showCreatorApply = true
+        } else {
+            currentScreen = AppScreen.BROADCAST_SETUP
+        }
     }
 
     val showBottomNav = currentScreen in listOf(
@@ -165,8 +191,8 @@ fun VioraAppRoot() {
             AppScreen.PROFILE -> {
                 ProfileScreen(
                     onNavigateToWallet = { currentScreen = AppScreen.WALLET },
-                    onNavigateToAdmin = { currentScreen = AppScreen.ADMIN_DASHBOARD },
-                    onNavigateToModeratorHub = { currentScreen = AppScreen.ADMIN_DASHBOARD },
+                    onNavigateToAdmin = { currentScreen = AppScreen.ADMIN_CONSOLE },
+                    onNavigateToModeratorHub = { currentScreen = AppScreen.MODERATOR_HUB },
                     onNavigateToSettings = { currentScreen = AppScreen.SETTINGS },
                     onNavigateToBroadcastSetup = { tryGoLive() },
                     onLogout = { VioraRepository.logout() },
@@ -178,11 +204,14 @@ fun VioraAppRoot() {
                     LiveRoomScreen(
                         stream = stream,
                         onLeave = {
+                            silentStreamId = null
                             activeLiveStream = null
                             currentScreen = AppScreen.HOME
                         },
                         onNavigateToWallet = { currentScreen = AppScreen.WALLET },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        isSilentModerator = silentStreamId == stream.id &&
+                            (currentUser.role == UserRole.MODERATOR || currentUser.role == UserRole.ADMIN)
                     )
                 } ?: run {
                     currentScreen = AppScreen.HOME
@@ -201,6 +230,22 @@ fun VioraAppRoot() {
             AppScreen.WALLET -> {
                 WalletScreen(
                     onBack = { currentScreen = AppScreen.HOME },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            AppScreen.MODERATOR_HUB -> {
+                ModeratorHubScreen(
+                    onBack = { currentScreen = AppScreen.PROFILE },
+                    onViewStream = { streamId ->
+                        val target = allStreams.find { it.id == streamId }
+                        if (target != null && target.status == com.example.model.StreamStatus.LIVE) {
+                            silentStreamId = target.id
+                            activeLiveStream = target
+                            currentScreen = AppScreen.LIVE_ROOM
+                        } else {
+                            notice = "That stream is no longer live"
+                        }
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -239,7 +284,7 @@ fun VioraAppRoot() {
         }
       }
 
-        // Bottom Navigation fixed below the content
+        // Bottom Navigation fixed below the content (primary tabs only)
         if (showBottomNav) {
             VioraBottomNavigationBar(
                 currentScreen = currentScreen,
@@ -257,15 +302,15 @@ fun VioraAppRoot() {
             title = { Text("Apply to go live", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Viora approves creators before they can broadcast. Tell us what you will stream.", color = VioraSecondaryText, fontSize = 12.sp)
+                    Text("Viora approves creators before they can broadcast. Tell us what you will stream.", color = VioraMutedText, fontSize = 12.sp)
                     OutlinedTextField(
                         value = pitch,
                         onValueChange = { pitch = it },
                         label = { Text("What will you stream?") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = VioraNeonPurple,
-                            unfocusedBorderColor = VioraGlassBorder,
+                            focusedBorderColor = VioraElectricPurple,
+                            unfocusedBorderColor = VioraBorder,
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         )
@@ -280,10 +325,10 @@ fun VioraAppRoot() {
                         showCreatorApply = false
                         notice = "Application sent. We will review it soon."
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = VioraNeonPurple)
+                    colors = ButtonDefaults.buttonColors(containerColor = VioraElectricPurple)
                 ) { Text("Send application", color = Color.White) }
             },
-            dismissButton = { TextButton(onClick = { showCreatorApply = false }) { Text("Cancel", color = VioraSecondaryText) } },
+            dismissButton = { TextButton(onClick = { showCreatorApply = false }) { Text("Cancel", color = VioraMutedText) } },
             containerColor = VioraCardDark
         )
     }
@@ -304,7 +349,9 @@ fun VioraBottomNavigationBar(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = VioraGlassBorder,
+                brush = Brush.verticalGradient(
+                    colors = listOf(VioraGoldBorderSubtle, Color.Transparent)
+                ),
                 shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp)
             ),
         color = VioraSecondaryBg,
@@ -338,7 +385,7 @@ fun VioraBottomNavigationBar(
                 testTag = "nav_inbox"
             )
 
-            // Center Floating Action Button (FAB) slightly raised with strong purple neon glow and broadcast icon
+            // Prominent "Go Live" action in center with Champagne Gold & Violet holographic glow ring
             Box(
                 modifier = Modifier
                     .offset(y = (-8).dp)
@@ -347,13 +394,13 @@ fun VioraBottomNavigationBar(
                     .border(
                         width = 2.dp,
                         brush = Brush.sweepGradient(
-                            listOf(VioraNeonPurple, VioraNeonPurpleLight, VioraPrimaryGold, VioraNeonPurple)
+                            listOf(VioraPrimaryChampagneGold, VioraSubtleViolet, VioraGoldHighlight, VioraPrimaryChampagneGold)
                         ),
                         shape = CircleShape
                     )
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(VioraNeonPurple, Color(0xFF3B1D5A))
+                            colors = listOf(VioraCardDark, VioraDeepViolet)
                         )
                     )
                     .clickable { onGoLive() }
@@ -363,12 +410,12 @@ fun VioraBottomNavigationBar(
                 Icon(
                     imageVector = Icons.Default.Podcasts,
                     contentDescription = "Go Live",
-                    tint = Color.White,
+                    tint = VioraPrimaryChampagneGold,
                     modifier = Modifier.size(28.dp)
                 )
             }
 
-            // Notifications Tab (Alerts)
+            // Notifications Tab
             BottomNavItem(
                 icon = if (currentScreen == AppScreen.NOTIFICATIONS) Icons.Filled.Notifications else Icons.Outlined.Notifications,
                 label = "Alerts",
@@ -411,7 +458,7 @@ private fun BottomNavItem(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) VioraPrimaryGold else VioraSecondaryText,
+                tint = if (isSelected) VioraPrimaryChampagneGold else VioraMutedText,
                 modifier = Modifier.size(24.dp)
             )
             if (badgeCount > 0) {
@@ -419,7 +466,7 @@ private fun BottomNavItem(
                     modifier = Modifier
                         .offset(x = 6.dp, y = (-4).dp)
                         .clip(CircleShape)
-                        .background(VioraLiveBadgeStart)
+                        .background(VioraLiveCoralPink)
                         .border(1.5.dp, VioraCardDark, CircleShape)
                         .padding(horizontal = 4.dp, vertical = 1.dp)
                 ) {
@@ -434,7 +481,7 @@ private fun BottomNavItem(
         }
         Text(
             text = label,
-            color = if (isSelected) Color.White else VioraSecondaryText,
+            color = if (isSelected) VioraPrimaryText else VioraMutedText,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
         )
