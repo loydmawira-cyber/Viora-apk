@@ -44,6 +44,15 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val liveStreams by VioraRepository.liveStreams.collectAsState()
+    val featuredIds by VioraRepository.featuredStreamIds.collectAsState()
+
+    // Real backend: refresh the list of live rooms every few seconds while Home is open.
+    LaunchedEffect(Unit) {
+        while (true) {
+            VioraRepository.refreshStreams()
+            kotlinx.coroutines.delay(8000)
+        }
+    }
     val currentUser by VioraRepository.currentUser.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Live Now, 1: Following
@@ -67,7 +76,7 @@ fun HomeScreen(
 
     val categoryScrollState = rememberScrollState()
 
-    val filteredStreams = remember(liveStreams, selectedTab, selectedCategory, selectedCountry, selectedSortOrder, searchQuery) {
+    val filteredStreams = remember(liveStreams, featuredIds, selectedTab, selectedCategory, selectedCountry, selectedSortOrder, searchQuery) {
         val list = liveStreams.filter { stream ->
             stream.status == StreamStatus.LIVE &&
             (selectedTab == 0 || stream.isFollowing) &&
@@ -80,12 +89,14 @@ fun HomeScreen(
              stream.tags.any { it.contains(searchQuery, ignoreCase = true) })
         }
 
-        when (selectedSortOrder) {
+        val sorted = when (selectedSortOrder) {
             StreamSortOrder.POPULAR -> list.sortedByDescending { it.viewerCount }
             StreamSortOrder.TRENDING -> list.sortedByDescending { it.likeCount }
             StreamSortOrder.NEWEST -> list.sortedByDescending { it.startedAtEpochMs }
             StreamSortOrder.DIAMONDS -> list.sortedByDescending { it.diamondCount }
         }
+        // Streams an admin featured always appear first.
+        sorted.sortedByDescending { it.id in featuredIds }
     }
 
     Column(
