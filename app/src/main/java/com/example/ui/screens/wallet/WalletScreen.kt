@@ -76,19 +76,7 @@ fun WalletScreen(
                 fontSize = 18.sp
             )
 
-            // Dev quick top-up
-            Button(
-                onClick = {
-                    VioraRepository.topUpTestCoins(1000)
-                    successToastMessage = "+1,000 Sandbox Coins Added!"
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = VioraElectricPurple),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                modifier = Modifier.testTag("dev_topup_button")
-            ) {
-                Text("+1K Test", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
+            Spacer(modifier = Modifier.size(36.dp))
         }
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -223,7 +211,7 @@ fun WalletScreen(
             title = { Text("Request Cash Out", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Exchange Rate: 100 Diamonds = $1.00 USD (Min: 100)", color = VioraWarmGold, fontSize = 12.sp)
+                    Text("Exchange Rate: 100 Diamonds = $1.00 USD (Min: 500)", color = VioraWarmGold, fontSize = 12.sp)
 
                     OutlinedTextField(
                         value = withdrawAmountText,
@@ -300,11 +288,12 @@ fun WalletScreen(
 
 @Composable
 private fun BuyCoinsView(onBuyPackage: (CoinPackage) -> Unit) {
+    val packages by VioraRepository.coinPackages.collectAsState()
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(COIN_PACKAGES) { pkg ->
+        items(packages.filter { it.isActive }) { pkg ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -410,7 +399,7 @@ private fun CreatorEarningsView(
 
                 Button(
                     onClick = onOpenCashOut,
-                    enabled = diamondBalance >= 100,
+                    enabled = diamondBalance >= 500,
                     colors = ButtonDefaults.buttonColors(containerColor = VioraCoral),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
@@ -421,7 +410,7 @@ private fun CreatorEarningsView(
                     Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (diamondBalance >= 100) "Request Cash Out ($%.2f USD)".format(diamondBalance / 100.0) else "Min 100 Diamonds to Cash Out",
+                        text = if (diamondBalance >= 500) "Request Cash Out ($%.2f USD)".format(diamondBalance / 100.0) else "Min 500 Diamonds to Cash Out",
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
