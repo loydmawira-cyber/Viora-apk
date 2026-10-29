@@ -2,6 +2,7 @@ package com.example.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Build
 import com.example.BuildConfig
 import com.example.model.User
@@ -92,7 +93,57 @@ object SupabaseApi {
     /** Sends Supabase's password-recovery email; redirect behavior follows the Supabase project settings. */
     suspend fun requestPasswordReset(email: String) {
         val body = JSONObject().put("email", email)
-        safe { call("POST", "/auth/v1/recover", body.toString()) }
+        val redirect = Uri.encode("viora://auth/reset")
+        safe { call("POST", "/auth/v1/recover?redirect_to=$redirect", body.toString()) }
+    }
+
+    /** Validates the recovery link and installs its short-lived session for the password update. */
+    suspend fun acceptPasswordRecoveryLink(uri: Uri) {
+        val params = linkedMapOf<String, String>()
+        fun readParams(encoded: String?) {
+            encoded?.split('&')?.forEach { pair ->
+                val parts = pair.split('=', limit = 2)
+                val key = java.net.URLDecoder.decode(parts[0], "UTF-8")
+                val value = java.net.URLDecoder.decode(parts.getOrElse(1) { "" }, "UTF-8")
+                if (key.isNotBlank()) params[key] = value
+            }
+        }
+        readParams(uri.query)
+        readParams(uri.fragment)
+
+        params["error_description"]?.let { throw ApiException(it) }
+        if (params["type"] != "recovery") {
+            throw ApiException("This password reset link is invalid or has expired. Request a new one.")
+        }
+
+        userId = null
+        val tokenHash = params["token_hash"]
+        val sessionJson = if (!tokenHash.isNullOrBlank()) {
+            safe {
+                call(
+                    "POST",
+                    "/auth/v1/verify",
+                    JSONObject().put("token_hash", tokenHash).put("type", "recovery").toString()
+                )
+            }.let(::JSONObject)
+        } else {
+            val access = params["access_token"].orEmpty()
+            val refresh = params["refresh_token"].orEmpty()
+            if (access.isBlank() || refresh.isBlank()) {
+                throw ApiException("The reset link did not contain a valid recovery session. Request a new one.")
+            }
+            JSONObject()
+                .put("access_token", access)
+                .put("refresh_token", refresh)
+                .put("expires_in", params["expires_in"]?.toLongOrNull() ?: 3600L)
+        }
+        saveSession(sessionJson)
+    }
+
+    suspend fun updatePassword(password: String) {
+        val user = JSONObject(authed("PUT", "/auth/v1/user", JSONObject().put("password", password).toString()))
+        userId = user.str("id").ifBlank { userId }
+        prefs?.edit()?.putString("uid", userId)?.apply()
     }
 
     /** True when the session was refreshed. False when the saved session is no longer valid. */
