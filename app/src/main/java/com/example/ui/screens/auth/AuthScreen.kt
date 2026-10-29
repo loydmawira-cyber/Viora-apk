@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.VioraRepository
-import com.example.model.UserRole
+import kotlinx.coroutines.launch
 import com.example.ui.components.LiveBadge
 import com.example.ui.theme.*
 
@@ -37,11 +37,15 @@ fun AuthScreen(
     modifier: Modifier = Modifier
 ) {
     var isSignUp by remember { mutableStateOf(false) }
-    var email by remember { mutableStateOf("creator@viora.live") }
-    var password by remember { mutableStateOf("viora2026") }
-    var username by remember { mutableStateOf("viora_star") }
-    var ageConfirmed by remember { mutableStateOf(true) }
-    var selectedRole by remember { mutableStateOf(UserRole.ADMIN) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var ageConfirmed by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+    var infoText by remember { mutableStateOf<String?>(null) }
+    val authScope = rememberCoroutineScope()
+    val usernameOk = username.matches(Regex("^[A-Za-z0-9_]{3,20}$"))
 
     val scrollState = rememberScrollState()
 
@@ -138,46 +142,6 @@ fun AuthScreen(
                 }
             }
 
-            // Role selection for easy MVP role testing
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(VioraCardDark)
-                    .padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Select Demo Role for Testing:",
-                    color = VioraWarmGold,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    UserRole.values().forEach { role ->
-                        val isSelected = selectedRole == role
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) VioraCoral else VioraSurfaceVariant)
-                                .clickable { selectedRole = role }
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = role.name,
-                                color = if (isSelected) Color.White else VioraMutedText,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-
             // Input Fields Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -262,18 +226,44 @@ fun AuthScreen(
                         }
                     }
 
+                    if (isSignUp && username.isNotBlank() && !usernameOk) {
+                        Text("Username: 3 to 20 letters, numbers or underscore.", color = VioraMutedText, fontSize = 11.sp)
+                    }
+                    if (isSignUp && password.isNotEmpty() && password.length < 8) {
+                        Text("Password needs at least 8 characters.", color = VioraMutedText, fontSize = 11.sp)
+                    }
+                    errorText?.let { Text(it, color = VioraErrorRed, fontSize = 12.sp) }
+                    infoText?.let { Text(it, color = VioraSuccessGreen, fontSize = 12.sp) }
+
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Button(
                         onClick = {
-                            VioraRepository.switchRole(selectedRole)
-                            if (isSignUp) {
-                                VioraRepository.signup(username, email, password)
-                            } else {
-                                VioraRepository.login(email, password)
+                            errorText = null
+                            infoText = null
+                            loading = true
+                            authScope.launch {
+                                if (isSignUp) {
+                                    VioraRepository.signUp(username.trim(), email.trim(), password)
+                                        .onSuccess { signedIn ->
+                                            if (signedIn) {
+                                                onAuthSuccess()
+                                            } else {
+                                                infoText = "Account created. Open the confirmation email, tap the link, then sign in."
+                                                isSignUp = false
+                                            }
+                                        }
+                                        .onFailure { errorText = it.message ?: "Something went wrong. Try again." }
+                                } else {
+                                    VioraRepository.signIn(email.trim(), password)
+                                        .onSuccess { onAuthSuccess() }
+                                        .onFailure { errorText = it.message ?: "Something went wrong. Try again." }
+                                }
+                                loading = false
                             }
-                            onAuthSuccess()
                         },
+                        enabled = !loading && email.isNotBlank() &&
+                            (if (isSignUp) (password.length >= 8 && ageConfirmed && usernameOk) else password.isNotBlank()),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -282,7 +272,7 @@ fun AuthScreen(
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Text(
-                            text = if (isSignUp) "Create Viora Account" else "Sign In to Viora",
+                            text = if (loading) "Please wait..." else if (isSignUp) "Create Viora Account" else "Sign In to Viora",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
