@@ -42,7 +42,8 @@ fun LiveRoomScreen(
     stream: LiveStream,
     onLeave: () -> Unit,
     onNavigateToWallet: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSilentModerator: Boolean = false
 ) {
     BackHandler { onLeave() }
 
@@ -83,7 +84,7 @@ fun LiveRoomScreen(
     LaunchedEffect(Unit) {
         while (true) {
             delay(5000)
-            VioraRepository.addLike(stream.id)
+            if (!isSilentModerator) VioraRepository.addLike(stream.id)
         }
     }
 
@@ -94,8 +95,10 @@ fun LiveRoomScreen(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = {
-                        reactionHeartCount++
-                        VioraRepository.addLike(stream.id)
+                        if (!isSilentModerator) {
+                            reactionHeartCount++
+                            VioraRepository.addLike(stream.id)
+                        }
                     }
                 )
             }
@@ -106,6 +109,20 @@ fun LiveRoomScreen(
             isVideoPaused = isVideoPaused,
             isFrontCamera = isCameraFront
         )
+
+        if (isSilentModerator) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 56.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xCC000000))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("👁 Silent moderator view. You are not counted as a viewer.", color = Color.White, fontSize = 11.sp)
+            }
+        }
 
         // 2. Floating Reactions Animation Overlay
         FloatingReactionsOverlay(
