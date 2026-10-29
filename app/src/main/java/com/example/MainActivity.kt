@@ -83,11 +83,19 @@ fun VioraAppRoot() {
         return
     }
 
-    Box(
+    val showBottomNav = currentScreen in listOf(
+        AppScreen.HOME,
+        AppScreen.INBOX,
+        AppScreen.NOTIFICATIONS,
+        AppScreen.PROFILE
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(VioraDarkBg)
     ) {
+      Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
         // Main Screen View
         when (currentScreen) {
             AppScreen.HOME -> {
@@ -181,20 +189,15 @@ fun VioraAppRoot() {
             }
         }
 
-        // Show Bottom Navigation only on primary tabs (Home, Inbox, Notifications, Profile)
-        val showBottomNav = currentScreen in listOf(
-            AppScreen.HOME,
-            AppScreen.INBOX,
-            AppScreen.NOTIFICATIONS,
-            AppScreen.PROFILE
-        )
+      }
 
+        // Bottom Navigation fixed below the content (primary tabs only)
         if (showBottomNav) {
             VioraBottomNavigationBar(
                 currentScreen = currentScreen,
                 onNavigate = { screen -> currentScreen = screen },
                 onGoLive = { currentScreen = AppScreen.BROADCAST_SETUP },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -211,9 +214,7 @@ fun VioraBottomNavigationBar(
     val unreadMessageCount = conversations.sumOf { it.unreadCount }
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
+        modifier = modifier.fillMaxWidth(),
         color = VioraCardDark,
         tonalElevation = 8.dp,
         shadowElevation = 16.dp
@@ -221,6 +222,7 @@ fun VioraBottomNavigationBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
