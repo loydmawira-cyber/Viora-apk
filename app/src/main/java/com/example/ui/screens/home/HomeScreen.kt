@@ -96,6 +96,7 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .background(VioraDarkBg)
+            .statusBarsPadding()
     ) {
         // App Bar
         Row(
@@ -108,11 +109,11 @@ fun HomeScreen(
             // Brand Wordmark
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
@@ -125,24 +126,16 @@ fun HomeScreen(
                         text = "V",
                         color = Color.White,
                         fontWeight = FontWeight.Black,
-                        fontSize = 18.sp
+                        fontSize = 22.sp
                     )
                 }
-                Column {
-                    Text(
-                        text = "Viora",
-                        color = Color.White,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp,
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = "Go live. Find your people.",
-                        color = VioraCoral,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text(
+                    text = "Viora",
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 28.sp,
+                    letterSpacing = 0.5.sp
+                )
             }
 
             // Right Action Items: Coins pill + Filter icon + Search + Avatar
@@ -313,7 +306,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(top = 6.dp, bottom = 80.dp)
+            contentPadding = PaddingValues(top = 6.dp, bottom = 12.dp)
         ) {
             // Featured Spotlight Hero on Live Now tab when All categories and blank search
             if (selectedTab == 0 && searchQuery.isBlank() && selectedCategory == StreamCategory.ALL && featuredStream != null) {
