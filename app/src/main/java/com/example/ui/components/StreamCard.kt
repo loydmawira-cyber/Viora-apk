@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -25,11 +26,10 @@ import com.example.model.LiveStream
 import com.example.ui.theme.*
 
 private val GRADIENT_PRESETS = listOf(
-    listOf(Color(0xFF35146F), Color(0xFF7B35E8), Color(0xFFFF5470)),
-    listOf(Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)),
-    listOf(Color(0xFF4A00E0), Color(0xFF8E2DE2), Color(0xFFFF416C)),
-    listOf(Color(0xFF1F1C2C), Color(0xFF928DAB), Color(0xFF5A3F37)),
-    listOf(Color(0xFF134E5E), Color(0xFF71B280), Color(0xFF2E7D32))
+    listOf(Color(0xFF19131D), Color(0xFF211E24), Color(0xFF3B2675)),
+    listOf(Color(0xFF0B0A0D), Color(0xFF1A171D), Color(0xFF2C1C38)),
+    listOf(Color(0xFF151218), Color(0xFF281C30), Color(0xFF100E13)),
+    listOf(Color(0xFF1F1C2C), Color(0xFF32233E), Color(0xFF1A171D))
 )
 
 @Composable
@@ -40,13 +40,14 @@ fun StreamCard(
     modifier: Modifier = Modifier
 ) {
     val gradientColors = GRADIENT_PRESETS.getOrElse(stream.thumbnailGradientIndex % GRADIENT_PRESETS.size) {
-        listOf(VioraDeepViolet, VioraElectricPurple)
+        listOf(VioraCardDark, VioraCardElevated)
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
+            .border(1.dp, VioraGoldBorderSubtle, RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .testTag("stream_card_${stream.id}"),
         colors = CardDefaults.cardColors(containerColor = VioraCardDark),
@@ -58,7 +59,7 @@ fun StreamCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(185.dp)
             ) {
                 if (stream.snapshotUrl.isNotBlank()) {
                     AsyncImage(
@@ -84,13 +85,15 @@ fun StreamCard(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Black.copy(alpha = 0.40f),
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.80f)
+                                    Color.Black.copy(alpha = 0.85f)
                                 )
                             )
                         )
                 )
+
+                // Top row badges: LIVE badge on left + Viewer count on right
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -107,7 +110,7 @@ fun StreamCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(VioraWarmGold)
+                                    .background(VioraPrimaryChampagneGold)
                                     .padding(horizontal = 7.dp, vertical = 3.dp)
                             ) {
                                 Row(
@@ -135,7 +138,7 @@ fun StreamCard(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.5f))
+                            .background(Color.Black.copy(alpha = 0.65f))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -167,7 +170,7 @@ fun StreamCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
+                            .background(Color.Black.copy(alpha = 0.70f))
                             .padding(horizontal = 6.dp, vertical = 3.dp)
                     ) {
                         Row(
@@ -188,12 +191,12 @@ fun StreamCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
+                            .background(Color.Black.copy(alpha = 0.70f))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = stream.category.title,
-                            color = VioraWarmGold,
+                            color = VioraPrimaryChampagneGold,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -206,7 +209,7 @@ fun StreamCard(
                         .align(Alignment.BottomEnd)
                         .padding(10.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.65f))
+                        .background(Color.Black.copy(alpha = 0.70f))
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -221,7 +224,7 @@ fun StreamCard(
                 }
             }
 
-            // Info Section
+            // Creator & Stream Details Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -234,13 +237,14 @@ fun StreamCard(
                     displayName = stream.hostName,
                     size = 40.dp,
                     showBorder = true,
+                    borderColor = VioraPrimaryChampagneGold,
                     isVerified = true
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stream.title,
-                        color = Color.White,
+                        color = VioraPrimaryText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         maxLines = 1,
@@ -253,30 +257,31 @@ fun StreamCard(
                     ) {
                         Text(
                             text = stream.hostName,
-                            color = VioraMutedText,
+                            color = VioraSecondaryText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "• ${stream.countryFlag} ${stream.countryName}",
-                            color = VioraSubtleText,
+                            color = VioraMutedText,
                             fontSize = 11.sp
                         )
                     }
                 }
 
-                // Follow button
+                // Follow / Action Button (Circular Deep Purple with Heart icon)
                 IconButton(
                     onClick = onToggleFollow,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(if (stream.isFollowing) VioraSurfaceVariant else VioraElectricPurple)
+                        .background(if (stream.isFollowing) VioraCardElevated else VioraDeepViolet)
+                        .border(1.dp, if (stream.isFollowing) VioraGoldBorderSubtle else VioraSubtleViolet, CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.VolunteerActivism,
+                        imageVector = if (stream.isFollowing) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (stream.isFollowing) "Unfollow" else "Follow",
-                        tint = if (stream.isFollowing) VioraCoral else Color.White,
+                        tint = if (stream.isFollowing) VioraLiveCoralPink else VioraPrimaryChampagneGold,
                         modifier = Modifier.size(18.dp)
                     )
                 }

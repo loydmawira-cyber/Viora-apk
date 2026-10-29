@@ -1,5 +1,6 @@
 package com.example.ui.screens.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,8 +18,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -95,139 +100,231 @@ fun HomeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(VioraDarkBg)
+            .background(VioraAppBg)
             .statusBarsPadding()
     ) {
-        // App Bar
-        Row(
+        // Futuristic Holographic Top Header Container
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(bottom = 4.dp)
         ) {
-            // Brand Wordmark
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            // Background Canvas drawing holographic gold tech contour lines
+            Canvas(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(horizontal = 4.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(VioraElectricPurple, VioraCoral)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "V",
-                        color = Color.White,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 22.sp
-                    )
+                val width = size.width
+                val height = size.height
+
+                // Subtle champagne gold grid lines & nodes
+                val strokeWidth = 1.2.dp.toPx()
+                val goldColor = Color(0x3BD9B56D)
+                val glowNodeColor = Color(0xFFD9B56D)
+                val violetNodeColor = Color(0x607655FF)
+
+                // Top curved tech line
+                val path1 = Path().apply {
+                    moveTo(0f, height * 0.25f)
+                    lineTo(width * 0.15f, height * 0.25f)
+                    lineTo(width * 0.22f, height * 0.85f)
+                    lineTo(width * 0.65f, height * 0.85f)
+                    lineTo(width * 0.72f, height * 0.20f)
+                    lineTo(width, height * 0.20f)
                 }
-                Text(
-                    text = "Viora",
-                    color = Color.White,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 28.sp,
-                    letterSpacing = 0.5.sp
+                drawPath(
+                    path = path1,
+                    color = goldColor,
+                    style = Stroke(width = strokeWidth)
                 )
+
+                // Tech nodes (glowing dots on line junctions)
+                drawCircle(color = glowNodeColor, radius = 3.dp.toPx(), center = Offset(width * 0.22f, height * 0.85f))
+                drawCircle(color = glowNodeColor, radius = 3.dp.toPx(), center = Offset(width * 0.65f, height * 0.85f))
+                drawCircle(color = violetNodeColor, radius = 4.dp.toPx(), center = Offset(width * 0.72f, height * 0.20f))
             }
 
-            // Right Action Items: Coins pill + Filter icon + Search + Avatar
+            // Top Header Content Controls
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Coins Quick Pill
+                // Left Brand Monogram & Wordmark
                 Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(VioraCardDark)
-                        .clickable { onNavigateToWallet() }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MonetizationOn,
-                        contentDescription = "Coins",
-                        tint = VioraWarmGold,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    // Circular V Monogram Badge with Champagne Gold gradient ring
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .border(
+                                width = 1.5.dp,
+                                brush = Brush.sweepGradient(
+                                    listOf(
+                                        VioraPrimaryChampagneGold,
+                                        VioraGoldHighlight,
+                                        VioraDarkChampagneGold,
+                                        VioraPrimaryChampagneGold
+                                    )
+                                ),
+                                shape = CircleShape
+                            )
+                            .background(VioraCardDark),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "V",
+                            color = VioraPrimaryText,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 22.sp
+                        )
+                    }
+
                     Text(
-                        text = "${currentUser.coinBalance}",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        text = "Viora",
+                        color = VioraPrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 26.sp,
+                        letterSpacing = 0.5.sp
                     )
                 }
 
-                // Search toggle
-                IconButton(
-                    onClick = { isSearchActive = !isSearchActive },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(VioraCardDark)
+                // Right Action Items: Coin balance pill + Search button + Profile avatar with gold ring
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                    // Coin Balance Pill
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(VioraCardDark)
+                            .border(1.dp, VioraGoldBorder, RoundedCornerShape(20.dp))
+                            .clickable { onNavigateToWallet() }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        // Round gold coin icon
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(VioraGoldHighlight, VioraPrimaryChampagneGold, VioraDarkChampagneGold)
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "$",
+                                color = Color.Black,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        Text(
+                            text = "${currentUser.coinBalance}",
+                            color = VioraPrimaryText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
-                AvatarView(
-                    imageUrl = currentUser.avatarUrl,
-                    displayName = currentUser.displayName,
-                    size = 36.dp,
-                    showBorder = true,
-                    modifier = Modifier.clickable { onNavigateToProfile() }
-                )
+                    // Glass Search button
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(VioraCardDark)
+                            .border(1.dp, VioraGoldBorder, CircleShape)
+                            .clickable { isSearchActive = !isSearchActive },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = VioraPrimaryText,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    // Profile Avatar with Gold Ring & Green Online Status Dot
+                    Box(
+                        modifier = Modifier.clickable { onNavigateToProfile() },
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, VioraPrimaryChampagneGold, CircleShape)
+                        ) {
+                            AvatarView(
+                                imageUrl = currentUser.avatarUrl,
+                                displayName = currentUser.displayName,
+                                size = 40.dp,
+                                showBorder = false
+                            )
+                        }
+                        // Green Online Indicator Dot
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(VioraOnlineGreen)
+                                .border(1.5.dp, VioraAppBg, CircleShape)
+                        )
+                    }
+                }
             }
         }
 
-        // Optional Search Bar
+        // Optional Search Bar Input
         if (isSearchActive) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search creators, country, tags, or topics...", color = VioraMutedText, fontSize = 13.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = VioraElectricPurple) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = VioraPrimaryChampagneGold) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
                     .testTag("search_input"),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = VioraElectricPurple,
-                    unfocusedBorderColor = VioraBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                )
+                    focusedBorderColor = VioraPrimaryChampagneGold,
+                    unfocusedBorderColor = VioraGoldBorder,
+                    focusedTextColor = VioraPrimaryText,
+                    unfocusedTextColor = VioraPrimaryText,
+                    focusedContainerColor = VioraCardDark,
+                    unfocusedContainerColor = VioraCardDark
+                ),
+                shape = RoundedCornerShape(14.dp)
             )
         }
 
-        // Live Now vs Following Feed Selector
+        // Live Now vs Following Feed Selector + Region Pill Selector
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = 14.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     text = "Live Now (${filteredStreams.size})",
-                    color = if (selectedTab == 0) Color.White else VioraMutedText,
+                    color = if (selectedTab == 0) VioraPrimaryText else VioraMutedText,
                     fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     modifier = Modifier
                         .clickable { selectedTab = 0 }
                         .testTag("tab_live_now")
@@ -235,38 +332,38 @@ fun HomeScreen(
 
                 Text(
                     text = "Following",
-                    color = if (selectedTab == 1) Color.White else VioraMutedText,
+                    color = if (selectedTab == 1) VioraPrimaryText else VioraMutedText,
                     fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     modifier = Modifier
                         .clickable { selectedTab = 1 }
                         .testTag("tab_following")
                 )
             }
 
-            // Quick Active Country Selector on top
+            // Region / Country selector pill
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(VioraCardDark)
-                    .border(1.dp, VioraBorder, RoundedCornerShape(14.dp))
+                    .border(1.dp, VioraGoldBorder, RoundedCornerShape(16.dp))
                     .clickable { showCountryPicker = true }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
                     .testTag("country_top_selector"),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Text(selectedCountry.flagEmoji, fontSize = 14.sp)
                 Text(
                     text = if (selectedCountry.code == "ALL") "All Regions" else selectedCountry.name,
-                    color = VioraWarmGold,
+                    color = VioraPrimaryChampagneGold,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = "Select Country",
-                    tint = VioraMutedText,
+                    tint = VioraSecondaryText,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -277,36 +374,49 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(categoryScrollState)
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StreamCategory.values().forEach { category ->
                 val isSelected = selectedCategory == category
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (isSelected) VioraElectricPurple else VioraCardDark)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isSelected) {
+                                Brush.horizontalGradient(
+                                    listOf(VioraPrimaryChampagneGold, VioraDarkChampagneGold)
+                                )
+                            } else {
+                                Brush.linearGradient(listOf(VioraCardDark, VioraCardDark))
+                            }
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) VioraGoldHighlight else VioraGoldBorderSubtle,
+                            shape = RoundedCornerShape(16.dp)
+                        )
                         .clickable { selectedCategory = category }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
                         .testTag("category_pill_${category.name}")
                 ) {
                     Text(
                         text = category.title,
-                        color = if (isSelected) Color.White else VioraMutedText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        color = if (isSelected) Color.Black else VioraSecondaryText,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold
                     )
                 }
             }
         }
 
-        // Stream List
+        // Stream Feed List
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(top = 6.dp, bottom = 12.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
         ) {
             // Featured Spotlight Hero on Live Now tab when All categories and blank search
             if (selectedTab == 0 && searchQuery.isBlank() && selectedCategory == StreamCategory.ALL && featuredStream != null) {
@@ -330,17 +440,17 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.Public,
                             contentDescription = null,
-                            tint = VioraCoral,
+                            tint = VioraLiveCoralPink,
                             modifier = Modifier.size(56.dp)
                         )
                         Text(
                             text = if (selectedCountry.code != "ALL") "No live streams in ${selectedCountry.name} ${selectedCountry.flagEmoji}" else "No live broadcasts found",
-                            color = Color.White,
+                            color = VioraPrimaryText,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         Text(
-                            text = "Try switching to Global 🌍 or selecting a different country filter",
+                            text = "Try switching to Global 🌍 or selecting a different category",
                             color = VioraMutedText,
                             fontSize = 13.sp
                         )
@@ -350,12 +460,12 @@ fun HomeScreen(
                                 selectedCountry = POPULAR_COUNTRIES.first()
                                 selectedCategory = StreamCategory.ALL
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = VioraElectricPurple),
+                            colors = ButtonDefaults.buttonColors(containerColor = VioraPrimaryChampagneGold),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Reset Filter to All Countries", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Reset Filters", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -371,12 +481,12 @@ fun HomeScreen(
         }
     }
 
-    // Direct Country Picker Dialog from top selector
+    // Direct Country / Region Picker Dialog
     if (showCountryPicker) {
         AlertDialog(
             onDismissRequest = { showCountryPicker = false },
             title = {
-                Text("Select Region / Country", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text("Select Region / Country", color = VioraPrimaryText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             },
             text = {
                 Column(
@@ -398,7 +508,7 @@ fun HomeScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) VioraCoral else VioraSurfaceVariant)
+                                    .background(if (isSelected) VioraPrimaryChampagneGold else VioraCardElevated)
                                     .clickable {
                                         selectedCountry = country
                                         showCountryPicker = false
@@ -415,7 +525,7 @@ fun HomeScreen(
                                     Text(country.flagEmoji, fontSize = 20.sp)
                                     Text(
                                         text = country.name,
-                                        color = Color.White,
+                                        color = if (isSelected) Color.Black else VioraPrimaryText,
                                         fontSize = 14.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                     )
@@ -425,12 +535,12 @@ fun HomeScreen(
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
-                                            .background(if (isSelected) Color.White.copy(alpha = 0.25f) else VioraCardDark)
+                                            .background(if (isSelected) Color.Black.copy(alpha = 0.20f) else VioraCardDark)
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
                                         Text(
                                             text = "$streamCount live",
-                                            color = if (isSelected) Color.White else VioraWarmGold,
+                                            color = if (isSelected) Color.Black else VioraPrimaryChampagneGold,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -450,7 +560,7 @@ fun HomeScreen(
         )
     }
 
-    // Coin-Gated Stream Unlock Dialog
+    // Coin-Gated VIP Stream Unlock Dialog
     if (streamToUnlock != null) {
         val targetStream = streamToUnlock!!
         AlertDialog(
@@ -463,7 +573,7 @@ fun HomeScreen(
                     Text("🔒", fontSize = 20.sp)
                     Text(
                         text = "VIP Live Stream",
-                        color = Color.White,
+                        color = VioraPrimaryText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
@@ -480,12 +590,13 @@ fun HomeScreen(
                             imageUrl = targetStream.hostAvatar,
                             displayName = targetStream.hostName,
                             size = 46.dp,
-                            showBorder = true
+                            showBorder = true,
+                            borderColor = VioraPrimaryChampagneGold
                         )
                         Column {
                             Text(
                                 text = targetStream.hostName,
-                                color = Color.White,
+                                color = VioraPrimaryText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
@@ -513,11 +624,11 @@ fun HomeScreen(
                         ) {
                             Column {
                                 Text("Entry Ticket", color = VioraMutedText, fontSize = 11.sp)
-                                Text("${targetStream.entryCoinPrice} Coins", color = VioraWarmGold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("${targetStream.entryCoinPrice} Coins", color = VioraPrimaryChampagneGold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("Your Balance", color = VioraMutedText, fontSize = 11.sp)
-                                Text("${currentUser.coinBalance} Coins", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("${currentUser.coinBalance} Coins", color = VioraPrimaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
                         }
                     }
@@ -533,7 +644,7 @@ fun HomeScreen(
                     if (currentUser.coinBalance < targetStream.entryCoinPrice) {
                         Text(
                             text = "⚠️ Insufficient coins (Need ${targetStream.entryCoinPrice - currentUser.coinBalance} more coins)",
-                            color = VioraCoral,
+                            color = VioraLiveCoralPink,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -550,7 +661,7 @@ fun HomeScreen(
                                 onSelectStream(result.getOrThrow())
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = VioraWarmGold),
+                        colors = ButtonDefaults.buttonColors(containerColor = VioraPrimaryChampagneGold),
                         modifier = Modifier.testTag("unlock_stream_button")
                     ) {
                         Text("Unlock & Enter (${targetStream.entryCoinPrice} Coins)", color = Color.Black, fontWeight = FontWeight.Bold)
@@ -561,7 +672,7 @@ fun HomeScreen(
                             streamToUnlock = null
                             onNavigateToWallet()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = VioraCoral),
+                        colors = ButtonDefaults.buttonColors(containerColor = VioraLiveCoralPink),
                         modifier = Modifier.testTag("recharge_coins_button")
                     ) {
                         Text("Recharge Coins", color = Color.White, fontWeight = FontWeight.Bold)
@@ -587,10 +698,11 @@ private fun FeaturedHeroBanner(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
+            .border(1.dp, VioraGoldBorder, RoundedCornerShape(20.dp))
             .clickable { onWatch() }
             .testTag("featured_hero_banner"),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = VioraDeepViolet),
+        colors = CardDefaults.cardColors(containerColor = VioraCardDark),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Box(
@@ -612,7 +724,7 @@ private fun FeaturedHeroBanner(
                         .matchParentSize()
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(VioraDeepViolet, VioraElectricPurple, Color(0xFF2A0845))
+                                colors = listOf(VioraDeepViolet, VioraCardElevated, VioraAppBg)
                             )
                         )
                 )
@@ -625,8 +737,8 @@ private fun FeaturedHeroBanner(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.50f),
-                                Color.Black.copy(alpha = 0.70f),
+                                Color.Black.copy(alpha = 0.40f),
+                                Color.Black.copy(alpha = 0.65f),
                                 Color.Black.copy(alpha = 0.90f)
                             )
                         )
@@ -652,12 +764,13 @@ private fun FeaturedHeroBanner(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.Black.copy(alpha = 0.55f))
+                                .background(Color.Black.copy(alpha = 0.60f))
+                                .border(0.5.dp, VioraGoldBorder, RoundedCornerShape(8.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "${stream.countryFlag} ${stream.countryName}",
-                                color = VioraWarmGold,
+                                color = VioraPrimaryChampagneGold,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -669,7 +782,7 @@ private fun FeaturedHeroBanner(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.55f))
+                            .background(Color.Black.copy(alpha = 0.60f))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Icon(
@@ -719,7 +832,7 @@ private fun FeaturedHeroBanner(
                             )
                             Text(
                                 text = stream.category.title,
-                                color = VioraWarmGold,
+                                color = VioraPrimaryChampagneGold,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -728,13 +841,13 @@ private fun FeaturedHeroBanner(
 
                     Button(
                         onClick = onWatch,
-                        colors = ButtonDefaults.buttonColors(containerColor = VioraCoral),
+                        colors = ButtonDefaults.buttonColors(containerColor = VioraPrimaryChampagneGold),
                         shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Watch Live", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("Watch Live", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

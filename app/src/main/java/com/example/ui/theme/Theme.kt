@@ -7,54 +7,54 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val VioraDarkColorScheme = darkColorScheme(
-    primary = VioraElectricPurple,
-    onPrimary = VioraPureWhite,
+    primary = VioraPrimaryChampagneGold,
+    onPrimary = VioraAppBg,
     primaryContainer = VioraDeepViolet,
-    onPrimaryContainer = VioraPurpleLight,
-    secondary = VioraCoral,
-    onSecondary = VioraPureWhite,
-    secondaryContainer = Color(0xFF4A1828),
+    onPrimaryContainer = VioraGoldHighlight,
+    secondary = VioraLiveCoralPink,
+    onSecondary = VioraPrimaryText,
+    secondaryContainer = Color(0xFF381423),
     onSecondaryContainer = Color(0xFFFFD9E2),
-    tertiary = VioraWarmGold,
-    onTertiary = Color(0xFF2E1F00),
-    tertiaryContainer = Color(0xFF4D3800),
-    onTertiaryContainer = Color(0xFFFFE088),
-    background = VioraDarkBg,
-    onBackground = VioraPureWhite,
+    tertiary = VioraSoftGold,
+    onTertiary = VioraAppBg,
+    tertiaryContainer = VioraDarkChampagneGold,
+    onTertiaryContainer = VioraGoldHighlight,
+    background = VioraAppBg,
+    onBackground = VioraPrimaryText,
     surface = VioraCardDark,
-    onSurface = VioraPureWhite,
+    onSurface = VioraPrimaryText,
     surfaceVariant = VioraCardElevated,
-    onSurfaceVariant = VioraMutedText,
-    outline = VioraBorder,
+    onSurfaceVariant = VioraSecondaryText,
+    outline = VioraGoldBorder,
     error = VioraErrorRed,
-    onError = VioraPureWhite
+    onError = VioraPrimaryText
 )
 
 private val VioraLightColorScheme = lightColorScheme(
-    primary = VioraElectricPurple,
-    onPrimary = VioraPureWhite,
-    primaryContainer = Color(0xFFEADDFF),
-    onPrimaryContainer = VioraDeepViolet,
-    secondary = VioraCoral,
-    onSecondary = VioraPureWhite,
+    primary = VioraPrimaryChampagneGold,
+    onPrimary = VioraAppBg,
+    primaryContainer = Color(0xFFF3E7CA),
+    onPrimaryContainer = Color(0xFF382A0B),
+    secondary = VioraLiveCoralPink,
+    onSecondary = VioraPrimaryText,
     secondaryContainer = Color(0xFFFFD9E2),
     onSecondaryContainer = Color(0xFF410011),
-    tertiary = Color(0xFFC79200),
-    onTertiary = VioraPureWhite,
-    background = Color(0xFFFAF7FD),
-    onBackground = Color(0xFF1B1526),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF1B1526),
-    surfaceVariant = Color(0xFFECE6F2),
-    onSurfaceVariant = Color(0xFF5A5266),
-    outline = Color(0xFFC9C1D6),
+    tertiary = VioraSoftGold,
+    onTertiary = VioraPrimaryText,
+    background = Color(0xFF151218),
+    onBackground = VioraPrimaryText,
+    surface = VioraCardDark,
+    onSurface = VioraPrimaryText,
+    surfaceVariant = VioraCardElevated,
+    onSurfaceVariant = VioraSecondaryText,
+    outline = VioraGoldBorder,
     error = VioraErrorRed,
-    onError = VioraPureWhite
+    onError = VioraPrimaryText
 )
 
 @Composable
 fun VioraTheme(
-    darkTheme: Boolean = true, // Dark mode is primary for live streaming experience
+    darkTheme: Boolean = true, // Black + Champagne Gold futuristic theme
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) VioraDarkColorScheme else VioraLightColorScheme
