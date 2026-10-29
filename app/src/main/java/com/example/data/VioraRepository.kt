@@ -28,7 +28,9 @@ object VioraRepository {
     private val _isRestoring = MutableStateFlow(SupabaseApi.isConfigured)
     val isRestoring: StateFlow<Boolean> = _isRestoring.asStateFlow()
 
-    private val _liveStreams = MutableStateFlow(MockDataProvider.initialStreams)
+    private val _liveStreams = MutableStateFlow(
+        if (SupabaseApi.isConfigured) emptyList() else MockDataProvider.initialStreams
+    )
     val liveStreams: StateFlow<List<LiveStream>> = _liveStreams.asStateFlow()
 
     private val _chatMessagesMap = MutableStateFlow<Map<String, List<ChatMessage>>>(
@@ -365,14 +367,14 @@ object VioraRepository {
             else -> "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800"
         }
         val newStream = LiveStream(
-            id = "stream_${System.currentTimeMillis()}",
+            id = if (SupabaseApi.isConfigured) UUID.randomUUID().toString() else "stream_${System.currentTimeMillis()}",
             hostId = user.id,
             hostName = user.displayName,
             hostAvatar = user.avatarUrl,
             hostRole = UserRole.BROADCASTER,
             title = title.ifBlank { "Live Broadcast with ${user.displayName}" },
             category = category,
-            agoraChannelName = "viora_${user.username}_${System.currentTimeMillis() % 10000}",
+            agoraChannelName = if (SupabaseApi.isConfigured) "viora_${user.id.take(8)}_${System.currentTimeMillis()}" else "viora_${user.username}_${System.currentTimeMillis() % 10000}",
             viewerCount = 1,
             likeCount = 0,
             diamondCount = 0,
@@ -403,10 +405,14 @@ object VioraRepository {
             )
             map + (newStream.id to initialSystemMessage)
         }
+        if (SupabaseApi.isConfigured) createRoomOnServer(newStream, category)
         return newStream
     }
 
     fun endLiveRoom(streamId: String) {
+        if (SupabaseApi.isConfigured) {
+            repoScope.launch { runCatching { SupabaseApi.rpc("end_my_room", JSONObject().put("p_room", streamId)) } }
+        }
         _liveStreams.update { list ->
             list.map { stream ->
                 if (stream.id == streamId) stream.copy(status = StreamStatus.ENDED) else stream
@@ -419,6 +425,21 @@ object VioraRepository {
         val user = _currentUser.value
         if (_mutedUsers.value.contains(user.id)) return false
         if (content.isBlank()) return false
+
+        // Real backend: the database enforces muting, bans and the keyword filter.
+        if (SupabaseApi.isConfigured) {
+            repoScope.launch {
+                val sent = runCatching {
+                    SupabaseApi.insert(
+                        "chat_messages",
+                        JSONObject().put("room_id", streamId).put("sender_id", user.id).put("content", content.trim())
+                    )
+                }
+                if (sent.isFailure) _serverMessage.value = sent.exceptionOrNull()?.message ?: "Message not sent"
+                refreshChat(streamId)
+            }
+            return true
+        }
 
         // Auto-flag: messages with banned keywords are held for moderator review
         val isStaffUser = user.role == UserRole.MODERATOR || user.role == UserRole.ADMIN
@@ -541,6 +562,8 @@ object VioraRepository {
         )
         _ledger.update { listOf(ledgerTx) + it }
 
+        if (SupabaseApi.isConfigured) sendGiftOnServer(streamId, gift, count)
+
         return Result.success(tx)
     }
 
@@ -550,6 +573,11 @@ object VioraRepository {
 
     // Wallet actions
     fun buyCoinPackage(pkg: CoinPackage) {
+        if (SupabaseApi.isConfigured) {
+            // Never grant coins from the app itself. Real purchases need Google Play Billing + server receipt checks.
+            _serverMessage.value = "Coin purchases are not open yet."
+            return
+        }
         val totalCoinsAdded = pkg.coins + pkg.bonusCoins
         _currentUser.update { it.copy(coinBalance = it.coinBalance + totalCoinsAdded) }
 
@@ -1194,5 +1222,156 @@ object VioraRepository {
             list.map { if (it.id == reportId && it.assignedToId.isBlank()) it.copy(assignedToId = me.id, assignedToName = me.displayName) else it }
         }
         log("Claimed report", reportId)
+    }
+
+    // =====================================================================
+    // LIVE DATA FROM SUPABASE (rooms, chat, gifts). Only active when keys are set.
+    // =====================================================================
+    private val _serverMessage = MutableStateFlow<String?>(null)
+    val serverMessage: StateFlow<String?> = _serverMessage.asStateFlow()
+    fun clearServerMessage() { _serverMessage.value = null }
+
+    private var categoryIdCache: Map<String, String> = emptyMap()
+    private var giftIdCache: Map<String, String> = emptyMap()
+
+    private fun roleFrom(text: String): UserRole =
+        UserRole.values().firstOrNull { it.name.equals(text, ignoreCase = true) } ?: UserRole.VIEWER
+
+    private fun mapStream(r: JSONObject): LiveStream {
+        val host = r.optJSONObject("profiles")
+        val slug = r.optJSONObject("stream_categories")?.str("slug").orEmpty()
+        val category = StreamCategory.values().firstOrNull { it.name.equals(slug, ignoreCase = true) } ?: StreamCategory.CHATTING
+        val hostName = host?.str("display_name").orEmpty().ifBlank { host?.str("username").orEmpty() }.ifBlank { "Host" }
+        val id = r.str("id")
+        val global = POPULAR_COUNTRIES[0]
+        return LiveStream(
+            id = id,
+            hostId = r.str("host_id"),
+            hostName = hostName,
+            hostAvatar = host?.str("avatar_url").orEmpty(),
+            hostRole = roleFrom(host?.str("role").orEmpty()),
+            title = r.str("title"),
+            category = category,
+            agoraChannelName = r.str("agora_channel_name"),
+            status = StreamStatus.LIVE,
+            viewerCount = r.optInt("viewer_count", 0),
+            likeCount = r.optLong("like_count", 0L).toInt(),
+            diamondCount = r.optLong("diamond_count", 0L),
+            startedAtEpochMs = SupabaseApi.parseIso(r.str("started_at")),
+            thumbnailGradientIndex = (id.hashCode() and 0x7fffffff) % 5,
+            snapshotUrl = r.str("thumbnail_url"),
+            countryCode = global.code,
+            countryName = global.name,
+            countryFlag = global.flagEmoji,
+            pinnedComment = r.str("pinned_comment").ifBlank { null },
+            tags = listOf("live", category.name.lowercase())
+        )
+    }
+
+    /** Pulls the list of live rooms. Call every few seconds while the Home screen is open. */
+    fun refreshStreams() {
+        if (!SupabaseApi.isConfigured || !_isAuthenticated.value) return
+        repoScope.launch {
+            runCatching {
+                val rows = SupabaseApi.select(
+                    "live_rooms?status=eq.live&select=*,profiles!host_id(username,display_name,avatar_url,role),stream_categories(slug)" +
+                        "&order=viewer_count.desc&limit=60"
+                )
+                val fromServer = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }.map { mapStream(it) }
+                // Keep my own brand-new room visible until the server list includes it.
+                val me = _currentUser.value.id
+                val now = System.currentTimeMillis()
+                val justStarted = _liveStreams.value.filter { local ->
+                    local.hostId == me && local.status == StreamStatus.LIVE &&
+                        fromServer.none { it.id == local.id } && now - local.startedAtEpochMs < 30_000L
+                }
+                _liveStreams.value = justStarted + fromServer
+            }
+        }
+    }
+
+    private suspend fun categoryId(category: StreamCategory): String? {
+        if (categoryIdCache.isEmpty()) {
+            val rows = SupabaseApi.select("stream_categories?select=id,slug")
+            categoryIdCache = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }.associate { it.str("slug") to it.str("id") }
+        }
+        return categoryIdCache[category.name.lowercase()]
+    }
+
+    private fun createRoomOnServer(stream: LiveStream, category: StreamCategory) {
+        repoScope.launch {
+            val result = runCatching {
+                val row = JSONObject()
+                    .put("id", stream.id)
+                    .put("host_id", stream.hostId)
+                    .put("title", stream.title)
+                    .put("agora_channel_name", stream.agoraChannelName)
+                    .put("thumbnail_url", stream.snapshotUrl)
+                categoryId(category)?.let { row.put("category_id", it) }
+                SupabaseApi.insert("live_rooms", row)
+            }
+            if (result.isFailure) {
+                _liveStreams.update { list -> list.map { if (it.id == stream.id) it.copy(status = StreamStatus.ENDED) else it } }
+                _serverMessage.value = result.exceptionOrNull()?.message ?: "Could not start your live room"
+            }
+        }
+    }
+
+    /** Pulls the latest chat for a room. Call every couple of seconds while the room is open. */
+    fun refreshChat(streamId: String) {
+        if (!SupabaseApi.isConfigured || !_isAuthenticated.value) return
+        repoScope.launch {
+            runCatching {
+                val rows = SupabaseApi.select(
+                    "chat_messages?room_id=eq.$streamId&is_deleted=eq.false" +
+                        "&select=id,content,created_at,sender_id,profiles!sender_id(username,display_name,avatar_url,role)" +
+                        "&order=created_at.desc&limit=80"
+                )
+                val hostId = _liveStreams.value.find { it.id == streamId }?.hostId
+                val fromServer = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }.reversed().map { r ->
+                    val sender = r.optJSONObject("profiles")
+                    val role = roleFrom(sender?.str("role").orEmpty())
+                    ChatMessage(
+                        id = r.str("id"),
+                        streamId = streamId,
+                        senderId = r.str("sender_id"),
+                        senderName = sender?.str("display_name").orEmpty().ifBlank { sender?.str("username").orEmpty() }.ifBlank { "Viewer" },
+                        senderAvatar = sender?.str("avatar_url").orEmpty(),
+                        senderRole = role,
+                        content = r.str("content"),
+                        type = MessageType.CHAT,
+                        timestampMs = SupabaseApi.parseIso(r.str("created_at")),
+                        isBroadcaster = r.str("sender_id") == hostId,
+                        isModerator = role == UserRole.MODERATOR || role == UserRole.ADMIN
+                    )
+                }
+                // Keep this device's own gift banners and system notes in the list.
+                val localOnly = (_chatMessagesMap.value[streamId] ?: emptyList()).filter { it.type != MessageType.CHAT }
+                _chatMessagesMap.update { it + (streamId to (fromServer + localOnly).sortedBy { m -> m.timestampMs }) }
+            }
+        }
+    }
+
+    private fun sendGiftOnServer(streamId: String, gift: VirtualGift, count: Int) {
+        repoScope.launch {
+            val result = runCatching {
+                if (giftIdCache.isEmpty()) {
+                    val rows = SupabaseApi.select("gift_catalog?select=id,slug")
+                    giftIdCache = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }.associate { it.str("slug") to it.str("id") }
+                }
+                val giftUuid = giftIdCache[gift.id] ?: throw ApiException("This gift is not available yet")
+                SupabaseApi.rpc(
+                    "send_gift",
+                    JSONObject()
+                        .put("p_room", streamId)
+                        .put("p_gift", giftUuid)
+                        .put("p_combo", count)
+                        .put("p_key", UUID.randomUUID().toString())
+                )
+            }
+            if (result.isFailure) _serverMessage.value = result.exceptionOrNull()?.message ?: "Gift could not be sent"
+            // The server is the source of truth for balances: reload them either way.
+            runCatching { loadAccount() }
+        }
     }
 }

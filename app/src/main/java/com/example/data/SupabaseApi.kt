@@ -315,11 +315,12 @@ object SupabaseApi {
             raw.contains("Email not confirmed", true) -> "Please confirm your email first. Check your inbox."
             raw.contains("Password should be", true) -> "Password is too short. Use at least 8 characters."
             raw.contains("rate limit", true) -> "Too many attempts. Please wait a minute and try again."
+            raw.contains("row-level security", true) -> "Not allowed right now. Your account may be muted, restricted or not approved for this."
             else -> raw
         }
     }
 
-    private fun parseIso(s: String): Long {
+    fun parseIso(s: String): Long {
         if (s.isBlank()) return System.currentTimeMillis()
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
