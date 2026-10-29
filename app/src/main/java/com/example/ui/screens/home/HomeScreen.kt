@@ -1,6 +1,7 @@
 package com.example.ui.screens.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -96,10 +98,29 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 2.dp)
+                .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(VioraPlumAccentBg, VioraSecondaryBg, VioraAppBg)
+                        )
+                    )
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            listOf(
+                                VioraNeonPurple.copy(alpha = 0.72f),
+                                VioraGlassBorder,
+                                VioraPrimaryGold.copy(alpha = 0.42f),
+                                VioraGlassBorder
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
             ) {
                 // Top Header Content Controls Row
                 Row(
@@ -109,7 +130,7 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left side: Circular glowing purple logo with 'V', next to bold white App Name
+                    // Left side: Viora app icon next to bold white App Name
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -117,7 +138,7 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .size(46.dp)
-                                .clip(CircleShape)
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.radialGradient(
                                         colors = listOf(VioraNeonPurple, Color(0xFF3B1D5A))
@@ -128,15 +149,14 @@ fun HomeScreen(
                                     brush = Brush.sweepGradient(
                                         listOf(VioraNeonPurple, VioraNeonPurpleLight, VioraPrimaryGold, VioraNeonPurple)
                                     ),
-                                    shape = CircleShape
+                                    shape = RoundedCornerShape(12.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "V",
-                                color = Color.White,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 24.sp
+                            Image(
+                                painter = painterResource(id = com.example.R.drawable.viora_icon),
+                                contentDescription = "Viora app icon",
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
 
@@ -196,8 +216,8 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(VioraGlassSurface)
-                                .border(1.dp, VioraGlassBorder, CircleShape)
+                                .background(VioraStrongGlassSurface)
+                                .border(1.dp, VioraTranslucentPurple, CircleShape)
                                 .clickable { isSearchActive = !isSearchActive },
                             contentAlignment = Alignment.Center
                         ) {
@@ -238,34 +258,83 @@ fun HomeScreen(
                     }
                 }
 
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    VioraNeonPurple.copy(alpha = 0.55f),
+                                    VioraGlassBorder,
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
                 // Sub-Header Tabs: "Live Now (7)" in bold white, "Following" in gray, Far right glassmorphism pill dropdown
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "Live Now (${filteredStreams.size})",
-                            color = if (selectedTab == 0) Color.White else VioraSecondaryText,
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 18.sp,
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
                             modifier = Modifier
                                 .clickable { selectedTab = 0 }
                                 .testTag("tab_live_now")
-                        )
+                        ) {
+                            Text(
+                                text = "Live Now (${filteredStreams.size})",
+                                color = if (selectedTab == 0) Color.White else VioraSecondaryText,
+                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 18.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(if (selectedTab == 0) 46.dp else 0.dp)
+                                    .height(3.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(VioraNeonPurple, VioraNeonPurpleLight)
+                                        )
+                                    )
+                            )
+                        }
 
-                        Text(
-                            text = "Following",
-                            color = if (selectedTab == 1) Color.White else VioraSecondaryText,
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 18.sp,
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
                             modifier = Modifier
                                 .clickable { selectedTab = 1 }
                                 .testTag("tab_following")
-                        )
+                        ) {
+                            Text(
+                                text = "Following",
+                                color = if (selectedTab == 1) Color.White else VioraSecondaryText,
+                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 18.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(if (selectedTab == 1) 46.dp else 0.dp)
+                                    .height(3.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(VioraNeonPurple, VioraNeonPurpleLight)
+                                        )
+                                    )
+                            )
+                        }
                     }
 
                     // Glassmorphism pill dropdown for "All Regions" with globe icon
