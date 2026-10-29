@@ -1,6 +1,7 @@
 package com.example
 
 import android.os.Bundle
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -64,20 +65,38 @@ enum class AppScreen {
 }
 
 class MainActivity : ComponentActivity() {
+    private var pendingRecoveryLink by mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        VioraRepository.init(applicationContext)
+        pendingRecoveryLink = intent?.data
+        VioraRepository.init(
+            applicationContext,
+            skipSessionRestore = pendingRecoveryLink != null
+        )
         setContent {
             VioraTheme(darkTheme = true) {
-                VioraAppRoot()
+                VioraAppRoot(
+                    recoveryLink = pendingRecoveryLink,
+                    onRecoveryLinkHandled = { pendingRecoveryLink = null }
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingRecoveryLink = intent.data
     }
 }
 
 @Composable
-fun VioraAppRoot() {
+fun VioraAppRoot(
+    recoveryLink: Uri? = null,
+    onRecoveryLinkHandled: () -> Unit = {}
+) {
     val isAuthenticated by VioraRepository.isAuthenticated.collectAsState()
 
     var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
@@ -89,12 +108,42 @@ fun VioraAppRoot() {
     var notice by remember { mutableStateOf<String?>(null) }
     var showCreatorApply by remember { mutableStateOf(false) }
     var silentStreamId by remember { mutableStateOf<String?>(null) }
+    var recoveryMode by remember { mutableStateOf(false) }
+    var recoveryError by remember { mutableStateOf<String?>(null) }
+    var processingRecovery by remember { mutableStateOf(recoveryLink != null) }
+
+    LaunchedEffect(recoveryLink) {
+        if (recoveryLink != null) {
+            processingRecovery = true
+            VioraRepository.acceptPasswordRecoveryLink(recoveryLink)
+                .onSuccess {
+                    recoveryError = null
+                    recoveryMode = true
+                }
+                .onFailure {
+                    recoveryMode = false
+                    recoveryError = it.message ?: "This reset link is invalid or expired. Request a new one."
+                }
+            processingRecovery = false
+            onRecoveryLinkHandled()
+        }
+    }
 
     LaunchedEffect(notice) {
         if (notice != null) {
             delay(2800)
             notice = null
         }
+    }
+
+    if (processingRecovery) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(VioraAppBg),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.CircularProgressIndicator(color = VioraPrimaryChampagneGold)
+        }
+        return
     }
 
     val restoring by VioraRepository.isRestoring.collectAsState()
@@ -110,9 +159,22 @@ fun VioraAppRoot() {
         return
     }
 
+    if (recoveryMode) {
+        AuthScreen(
+            onAuthSuccess = {
+                recoveryMode = false
+                recoveryError = null
+            },
+            isPasswordRecovery = true,
+            modifier = Modifier.fillMaxSize()
+        )
+        return
+    }
+
     if (!isAuthenticated) {
         AuthScreen(
             onAuthSuccess = { currentScreen = AppScreen.HOME },
+            initialError = recoveryError,
             modifier = Modifier.fillMaxSize()
         )
         return
