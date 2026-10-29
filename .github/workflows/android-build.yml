@@ -47,7 +47,13 @@ jobs:
           if [ ! -f .env ]; then cp .env.example .env; fi
           [ -n "$SUPABASE_URL" ] && sed -i "s|^SUPABASE_URL=.*|SUPABASE_URL=$SUPABASE_URL|" .env
           [ -n "$SUPABASE_ANON_KEY" ] && sed -i "s|^SUPABASE_ANON_KEY=.*|SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY|" .env
-          [ -n "$AGORA_APP_ID" ] && sed -i "s|^AGORA_APP_ID=.*|AGORA_APP_ID=$AGORA_APP_ID|" .env
+          if [ -n "$AGORA_APP_ID" ]; then
+            if grep -q '^AGORA_APP_ID=' .env; then
+              sed -i "s|^AGORA_APP_ID=.*|AGORA_APP_ID=$AGORA_APP_ID|" .env
+            else
+              echo "AGORA_APP_ID=$AGORA_APP_ID" >> .env
+            fi
+          fi
           true
 
       - name: Run Unit Tests
