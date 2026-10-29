@@ -74,6 +74,14 @@ fun LiveRoomScreen(
     var isVideoPaused by remember { mutableStateOf(false) }
 
     // Auto-scroll chat to latest message
+    // Real backend: pull new chat messages every couple of seconds while the room is open.
+    LaunchedEffect(stream.id) {
+        while (true) {
+            VioraRepository.refreshChat(stream.id)
+            kotlinx.coroutines.delay(2500)
+        }
+    }
+
     LaunchedEffect(chatMessages.size) {
         if (chatMessages.isNotEmpty()) {
             listState.animateScrollToItem(chatMessages.size - 1)
