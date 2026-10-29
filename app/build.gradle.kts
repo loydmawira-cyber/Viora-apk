@@ -8,6 +8,24 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+// Reads .env.example, then .env on top of it. A blank value never replaces a real one,
+// so an empty secret on CI can no longer produce an invalid BuildConfig field.
+val vioraEnv = java.util.Properties().also { merged ->
+  listOf(".env.example", ".env").forEach { fileName ->
+    val file = rootProject.file(fileName)
+    if (file.exists()) {
+      val loaded = java.util.Properties()
+      file.inputStream().use { loaded.load(it) }
+      loaded.stringPropertyNames().forEach { key ->
+        val value = loaded.getProperty(key).trim()
+        if (value.isNotEmpty()) merged.setProperty(key, value)
+      }
+    }
+  }
+}
+
+fun vioraEnvField(key: String): String = "\"" + (vioraEnv.getProperty(key) ?: "") + "\""
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -20,6 +38,11 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // Public client values only (Supabase URL + publishable key, Agora app id).
+    buildConfigField("String", "SUPABASE_URL", vioraEnvField("SUPABASE_URL"))
+    buildConfigField("String", "SUPABASE_ANON_KEY", vioraEnvField("SUPABASE_ANON_KEY"))
+    buildConfigField("String", "AGORA_APP_ID", vioraEnvField("AGORA_APP_ID"))
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -76,6 +99,10 @@ secrets {
   propertiesFileName = ".env"
   defaultPropertiesFileName = ".env.example"
   ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
+  // These three are generated above with blank-value protection.
+  ignoreList.add("SUPABASE_URL")
+  ignoreList.add("SUPABASE_ANON_KEY")
+  ignoreList.add("AGORA_APP_ID")
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
