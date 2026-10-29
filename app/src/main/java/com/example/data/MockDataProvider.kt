@@ -10,13 +10,14 @@ object MockDataProvider {
         displayName = "Alex Rivers",
         avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
         bio = "Exploring sound & vibes ✨ Catch me live every Tue/Fri!",
-        role = UserRole.ADMIN,
+        role = UserRole.VIEWER,
         coinBalance = 2450,
         diamondBalance = 840,
         followersCount = 3890,
         followingCount = 184,
         isVerified = true,
-        level = 18
+        level = 18,
+        createdAtMs = System.currentTimeMillis() - 90L * 24 * 3600 * 1000
     )
 
     val sampleUsers = listOf(
