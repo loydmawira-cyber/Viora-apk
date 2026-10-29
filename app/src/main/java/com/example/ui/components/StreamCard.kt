@@ -26,10 +26,9 @@ import com.example.model.LiveStream
 import com.example.ui.theme.*
 
 private val GRADIENT_PRESETS = listOf(
-    listOf(Color(0xFF19131D), Color(0xFF211E24), Color(0xFF3B2675)),
-    listOf(Color(0xFF0B0A0D), Color(0xFF1A171D), Color(0xFF2C1C38)),
-    listOf(Color(0xFF151218), Color(0xFF281C30), Color(0xFF100E13)),
-    listOf(Color(0xFF1F1C2C), Color(0xFF32233E), Color(0xFF1A171D))
+    listOf(Color(0xFF141414), Color(0xFF1E1428), Color(0xFF2B173D)),
+    listOf(Color(0xFF0D0D0D), Color(0xFF191420), Color(0xFF241830)),
+    listOf(Color(0xFF141414), Color(0xFF1D1B22), Color(0xFF0D0D0D))
 )
 
 @Composable
@@ -40,22 +39,22 @@ fun StreamCard(
     modifier: Modifier = Modifier
 ) {
     val gradientColors = GRADIENT_PRESETS.getOrElse(stream.thumbnailGradientIndex % GRADIENT_PRESETS.size) {
-        listOf(VioraCardDark, VioraCardElevated)
+        listOf(VioraCardDark, VioraPlumAccentBg)
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .border(1.dp, VioraGoldBorderSubtle, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .border(1.dp, VioraGlassBorder, RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .testTag("stream_card_${stream.id}"),
         colors = CardDefaults.cardColors(containerColor = VioraCardDark),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Live Preview Thumbnail Snapshot
+            // Media Area (Top)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -78,22 +77,22 @@ fun StreamCard(
                     )
                 }
 
-                // Gradient scrim overlay for high contrast and readability of badges & metrics
+                // Scrim Overlay
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.Black.copy(alpha = 0.40f),
+                                    Color.Black.copy(alpha = 0.35f),
                                     Color.Transparent,
-                                    Color.Black.copy(alpha = 0.85f)
+                                    Color.Black.copy(alpha = 0.80f)
                                 )
                             )
                         )
                 )
 
-                // Top row badges: LIVE badge on left + Viewer count on right
+                // Top Badges
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -110,8 +109,12 @@ fun StreamCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(VioraPrimaryChampagneGold)
-                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(VioraPrimaryGold, VioraDarkGold)
+                                        )
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -134,11 +137,12 @@ fun StreamCard(
                         }
                     }
 
-                    // Viewer Count Pill
+                    // Top-Right: Glassmorphism pill with eye icon and viewer count
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
+                            .background(VioraGlassSurface)
+                            .border(1.dp, VioraGlassBorder, RoundedCornerShape(12.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -158,7 +162,7 @@ fun StreamCard(
                     }
                 }
 
-                // Bottom-left pills: Country flag badge + Category pill
+                // Bottom-Left: Glassmorphism pills with country flag/code and category
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -166,11 +170,11 @@ fun StreamCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Country Pill
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.70f))
+                            .background(VioraGlassSurface)
+                            .border(1.dp, VioraGlassBorder, RoundedCornerShape(8.dp))
                             .padding(horizontal = 6.dp, vertical = 3.dp)
                     ) {
                         Row(
@@ -187,29 +191,30 @@ fun StreamCard(
                         }
                     }
 
-                    // Category Pill
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.70f))
+                            .background(VioraGlassSurface)
+                            .border(1.dp, VioraGlassBorder, RoundedCornerShape(8.dp))
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = stream.category.title,
-                            color = VioraPrimaryChampagneGold,
+                            color = VioraPrimaryGold,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                // Diamonds collected pill on bottom-right
+                // Bottom-Right: Glassmorphism pill with blue diamond icon and gem count
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(10.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.70f))
+                        .background(VioraGlassSurface)
+                        .border(1.dp, VioraGlassBorder, RoundedCornerShape(8.dp))
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -224,7 +229,7 @@ fun StreamCard(
                 }
             }
 
-            // Creator & Stream Details Section
+            // Info Area (Bottom)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -235,9 +240,9 @@ fun StreamCard(
                 AvatarView(
                     imageUrl = stream.hostAvatar,
                     displayName = stream.hostName,
-                    size = 40.dp,
+                    size = 42.dp,
                     showBorder = true,
-                    borderColor = VioraPrimaryChampagneGold,
+                    borderColor = VioraPrimaryGold,
                     isVerified = true
                 )
 
@@ -263,26 +268,32 @@ fun StreamCard(
                         )
                         Text(
                             text = "• ${stream.countryFlag} ${stream.countryName}",
-                            color = VioraMutedText,
+                            color = VioraSecondaryText,
                             fontSize = 11.sp
                         )
                     }
                 }
 
-                // Follow / Action Button (Circular Deep Purple with Heart icon)
+                // Right: Large circular button with translucent purple background, neon purple border glow, and a heart icon
                 IconButton(
                     onClick = onToggleFollow,
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
-                        .background(if (stream.isFollowing) VioraCardElevated else VioraDeepViolet)
-                        .border(1.dp, if (stream.isFollowing) VioraGoldBorderSubtle else VioraSubtleViolet, CircleShape)
+                        .background(
+                            if (stream.isFollowing) VioraTranslucentPurple else VioraTranslucentPurple
+                        )
+                        .border(
+                            1.5.dp,
+                            if (stream.isFollowing) VioraNeonPurpleLight else VioraNeonPurple,
+                            CircleShape
+                        )
                 ) {
                     Icon(
                         imageVector = if (stream.isFollowing) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = if (stream.isFollowing) "Unfollow" else "Follow",
-                        tint = if (stream.isFollowing) VioraLiveCoralPink else VioraPrimaryChampagneGold,
-                        modifier = Modifier.size(18.dp)
+                        tint = if (stream.isFollowing) VioraLiveBadgeStart else VioraNeonPurpleLight,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

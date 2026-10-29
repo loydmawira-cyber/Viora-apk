@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.VioraRepository
 import com.example.ui.theme.*
 
 data class VioraNotification(
@@ -40,9 +43,16 @@ private val SAMPLE_NOTIFICATIONS = listOf(
 fun NotificationsScreen(
     modifier: Modifier = Modifier
 ) {
-    val announcements by com.example.data.VioraRepository.announcements.collectAsState()
-    val allNotifications = announcements.map {
-        VioraNotification("ann_${it.id}", it.title, it.body, "new", "📣", true)
+    val announcements by VioraRepository.announcements.collectAsState()
+    val allNotifications = announcements.map { ann ->
+        VioraNotification(
+            id = "ann_${ann.id}",
+            title = ann.title,
+            body = ann.body,
+            timeAgo = "Just now",
+            iconEmoji = "📣",
+            isUnread = true
+        )
     } + SAMPLE_NOTIFICATIONS
 
     Column(
@@ -77,7 +87,7 @@ fun NotificationsScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 12.dp)
         ) {
-            items(allNotifications) { notif ->
+            items(items = allNotifications, key = { it.id }) { notif ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
