@@ -112,6 +112,14 @@ fun VioraAppRoot(
     var recoveryError by remember { mutableStateOf<String?>(null) }
     var processingRecovery by remember { mutableStateOf(recoveryLink != null) }
 
+    val serverMessage by VioraRepository.serverMessage.collectAsState()
+    LaunchedEffect(serverMessage) {
+        serverMessage?.let {
+            notice = it
+            VioraRepository.clearServerMessage()
+        }
+    }
+
     LaunchedEffect(recoveryLink) {
         if (recoveryLink != null) {
             processingRecovery = true
