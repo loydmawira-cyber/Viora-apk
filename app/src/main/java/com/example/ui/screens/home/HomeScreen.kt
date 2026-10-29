@@ -90,8 +90,9 @@ fun HomeScreen(
         }
     }
 
-    val featuredStream = remember(liveStreams, selectedCountry) {
-        liveStreams.firstOrNull {
+    val featuredIds by VioraRepository.featuredStreamIds.collectAsState()
+    val featuredStream = remember(liveStreams, selectedCountry, featuredIds) {
+        liveStreams.firstOrNull { it.status == StreamStatus.LIVE && it.id in featuredIds } ?: liveStreams.firstOrNull {
             it.status == StreamStatus.LIVE &&
             (selectedCountry.code == "ALL" || it.countryCode.equals(selectedCountry.code, ignoreCase = true))
         } ?: liveStreams.firstOrNull { it.status == StreamStatus.LIVE }
