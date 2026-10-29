@@ -40,7 +40,9 @@ import com.example.ui.theme.*
 @Composable
 fun AuthScreen(
     onAuthSuccess: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isPasswordRecovery: Boolean = false,
+    initialError: String? = null
 ) {
     var isSignUp by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
@@ -49,7 +51,7 @@ fun AuthScreen(
     var username by remember { mutableStateOf("") }
     var ageConfirmed by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
-    var errorText by remember { mutableStateOf<String?>(null) }
+    var errorText by remember(initialError) { mutableStateOf(initialError) }
     var infoText by remember { mutableStateOf<String?>(null) }
     val authScope = rememberCoroutineScope()
     val usernameOk = username.matches(Regex("^[A-Za-z0-9_]{3,20}$"))
@@ -157,7 +159,7 @@ fun AuthScreen(
                         fontWeight = FontWeight.Medium
                     )
 
-                    Row(
+                    if (!isPasswordRecovery) Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(18.dp))
@@ -228,6 +230,15 @@ fun AuthScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (isPasswordRecovery) {
+                        Text(
+                            text = "Choose a new password",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
                     if (isSignUp) {
                         OutlinedTextField(
                             value = username,
@@ -247,7 +258,7 @@ fun AuthScreen(
                         )
                     }
 
-                    OutlinedTextField(
+                    if (!isPasswordRecovery) OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
                         label = { Text("Email address") },
@@ -267,7 +278,7 @@ fun AuthScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text(if (isPasswordRecovery) "New password" else "Password") },
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = VioraElectricPurple) },
                         visualTransformation = PasswordVisualTransformation(),
                         singleLine = true,
@@ -282,11 +293,11 @@ fun AuthScreen(
                         )
                     )
 
-                    if (isSignUp) {
+                    if (isSignUp || isPasswordRecovery) {
                         OutlinedTextField(
                             value = confirmPassword,
                             onValueChange = { confirmPassword = it },
-                            label = { Text("Confirm password") },
+                            label = { Text(if (isPasswordRecovery) "Confirm new password" else "Confirm password") },
                             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = VioraElectricPurple) },
                             visualTransformation = PasswordVisualTransformation(),
                             singleLine = true,
@@ -300,7 +311,7 @@ fun AuthScreen(
                                 unfocusedTextColor = Color.White
                             )
                         )
-                    } else {
+                    } else if (!isPasswordRecovery) {
                         Text(
                             text = "Forgot password?",
                             color = VioraCoral,
@@ -349,10 +360,10 @@ fun AuthScreen(
                     if (isSignUp && username.isNotBlank() && !usernameOk) {
                         Text("Username: 3 to 20 letters, numbers or underscore.", color = VioraMutedText, fontSize = 11.sp)
                     }
-                    if (isSignUp && password.isNotEmpty() && password.length < 8) {
+                    if ((isSignUp || isPasswordRecovery) && password.isNotEmpty() && password.length < 8) {
                         Text("Password needs at least 8 characters.", color = VioraMutedText, fontSize = 11.sp)
                     }
-                    if (isSignUp && confirmPassword.isNotEmpty() && password != confirmPassword) {
+                    if ((isSignUp || isPasswordRecovery) && confirmPassword.isNotEmpty() && password != confirmPassword) {
                         Text("Passwords do not match.", color = VioraErrorRed, fontSize = 11.sp)
                     }
                     errorText?.let { Text(it, color = VioraErrorRed, fontSize = 12.sp) }
@@ -366,7 +377,11 @@ fun AuthScreen(
                             infoText = null
                             loading = true
                             authScope.launch {
-                                if (isSignUp) {
+                                if (isPasswordRecovery) {
+                                    VioraRepository.updatePassword(password)
+                                        .onSuccess { onAuthSuccess() }
+                                        .onFailure { errorText = it.message ?: "Could not update the password. Request a new reset link and try again." }
+                                } else if (isSignUp) {
                                     VioraRepository.signUp(username.trim(), email.trim(), password)
                                         .onSuccess { signedIn ->
                                             if (signedIn) {
@@ -385,8 +400,15 @@ fun AuthScreen(
                                 loading = false
                             }
                         },
-                        enabled = !loading && email.isNotBlank() &&
-                            (if (isSignUp) (password.length >= 8 && password == confirmPassword && ageConfirmed && usernameOk) else password.isNotBlank()),
+                        enabled = !loading && if (isPasswordRecovery) {
+                            password.length >= 8 && password == confirmPassword
+                        } else {
+                            email.isNotBlank() && if (isSignUp) {
+                                password.length >= 8 && password == confirmPassword && ageConfirmed && usernameOk
+                            } else {
+                                password.isNotBlank()
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
@@ -395,7 +417,11 @@ fun AuthScreen(
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Text(
-                            text = if (loading) "Please wait..." else if (isSignUp) "Create Viora Account" else "Sign In to Viora",
+                            text = if (loading) "Please wait..." else when {
+                                isPasswordRecovery -> "Update Password"
+                                isSignUp -> "Create Viora Account"
+                                else -> "Sign In to Viora"
+                            },
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
