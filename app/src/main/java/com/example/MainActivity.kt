@@ -30,7 +30,12 @@ import androidx.compose.ui.unit.sp
 import com.example.data.VioraRepository
 import com.example.model.Conversation
 import com.example.model.LiveStream
+import com.example.model.UserRole
+import com.example.ui.screens.admin.AdminConsoleScreen
 import com.example.ui.screens.admin.AdminDashboardScreen
+import com.example.ui.screens.auth.AppealScreen
+import com.example.ui.screens.moderation.ModeratorHubScreen
+import kotlinx.coroutines.delay
 import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.inbox.DirectChatScreen
@@ -53,13 +58,16 @@ enum class AppScreen {
     BROADCAST_SETUP,
     WALLET,
     ADMIN_DASHBOARD,
-    SETTINGS
+    SETTINGS,
+    MODERATOR_HUB,
+    ADMIN_CONSOLE
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        VioraRepository.init(applicationContext)
         setContent {
             VioraTheme(darkTheme = true) {
                 VioraAppRoot()
@@ -75,6 +83,32 @@ fun VioraAppRoot() {
     var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
     var activeLiveStream by remember { mutableStateOf<LiveStream?>(null) }
     var activeConversation by remember { mutableStateOf<Conversation?>(null) }
+    val currentUser by VioraRepository.currentUser.collectAsState()
+    val platformSettings by VioraRepository.settings.collectAsState()
+    val allStreams by VioraRepository.liveStreams.collectAsState()
+    var notice by remember { mutableStateOf<String?>(null) }
+    var showCreatorApply by remember { mutableStateOf(false) }
+    var silentStreamId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            delay(2800)
+            notice = null
+        }
+    }
+
+    val restoring by VioraRepository.isRestoring.collectAsState()
+    if (restoring) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(VioraAppBg),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.CircularProgressIndicator(color = VioraPrimaryChampagneGold)
+        }
+        return
+    }
 
     if (!isAuthenticated) {
         AuthScreen(
@@ -82,6 +116,25 @@ fun VioraAppRoot() {
             modifier = Modifier.fillMaxSize()
         )
         return
+    }
+
+    if (currentUser.isBanned) {
+        AppealScreen(
+            onSignOut = { VioraRepository.logout() },
+            modifier = Modifier.fillMaxSize()
+        )
+        return
+    }
+
+    // Go Live is allowed for approved creators and staff only, and never during a kill switch
+    val tryGoLive: () -> Unit = {
+        if (platformSettings.streamsPaused) {
+            notice = "Live streaming is temporarily paused by Viora"
+        } else if (currentUser.role == UserRole.VIEWER) {
+            showCreatorApply = true
+        } else {
+            currentScreen = AppScreen.BROADCAST_SETUP
+        }
     }
 
     val showBottomNav = currentScreen in listOf(
@@ -138,9 +191,10 @@ fun VioraAppRoot() {
             AppScreen.PROFILE -> {
                 ProfileScreen(
                     onNavigateToWallet = { currentScreen = AppScreen.WALLET },
-                    onNavigateToAdmin = { currentScreen = AppScreen.ADMIN_DASHBOARD },
+                    onNavigateToAdmin = { currentScreen = AppScreen.ADMIN_CONSOLE },
+                    onNavigateToModeratorHub = { currentScreen = AppScreen.MODERATOR_HUB },
                     onNavigateToSettings = { currentScreen = AppScreen.SETTINGS },
-                    onNavigateToBroadcastSetup = { currentScreen = AppScreen.BROADCAST_SETUP },
+                    onNavigateToBroadcastSetup = { tryGoLive() },
                     onLogout = { VioraRepository.logout() },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -150,11 +204,14 @@ fun VioraAppRoot() {
                     LiveRoomScreen(
                         stream = stream,
                         onLeave = {
+                            silentStreamId = null
                             activeLiveStream = null
                             currentScreen = AppScreen.HOME
                         },
                         onNavigateToWallet = { currentScreen = AppScreen.WALLET },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        isSilentModerator = silentStreamId == stream.id &&
+                            (currentUser.role == UserRole.MODERATOR || currentUser.role == UserRole.ADMIN)
                     )
                 } ?: run {
                     currentScreen = AppScreen.HOME
@@ -176,9 +233,32 @@ fun VioraAppRoot() {
                     modifier = Modifier.fillMaxSize()
                 )
             }
+            AppScreen.MODERATOR_HUB -> {
+                ModeratorHubScreen(
+                    onBack = { currentScreen = AppScreen.PROFILE },
+                    onViewStream = { streamId ->
+                        val target = allStreams.find { it.id == streamId }
+                        if (target != null && target.status == com.example.model.StreamStatus.LIVE) {
+                            silentStreamId = target.id
+                            activeLiveStream = target
+                            currentScreen = AppScreen.LIVE_ROOM
+                        } else {
+                            notice = "That stream is no longer live"
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            AppScreen.ADMIN_CONSOLE -> {
+                AdminConsoleScreen(
+                    onBack = { currentScreen = AppScreen.PROFILE },
+                    onOpenSafetyDashboard = { currentScreen = AppScreen.ADMIN_DASHBOARD },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             AppScreen.ADMIN_DASHBOARD -> {
                 AdminDashboardScreen(
-                    onBack = { currentScreen = AppScreen.PROFILE },
+                    onBack = { currentScreen = AppScreen.ADMIN_CONSOLE },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -190,6 +270,18 @@ fun VioraAppRoot() {
             }
         }
 
+        notice?.let { msg ->
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                color = VioraCardElevated,
+                shape = RoundedCornerShape(14.dp),
+                shadowElevation = 8.dp
+            ) {
+                Text(msg, color = Color.White, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+            }
+        }
       }
 
         // Bottom Navigation fixed below the content (primary tabs only)
@@ -197,10 +289,48 @@ fun VioraAppRoot() {
             VioraBottomNavigationBar(
                 currentScreen = currentScreen,
                 onNavigate = { screen -> currentScreen = screen },
-                onGoLive = { currentScreen = AppScreen.BROADCAST_SETUP },
+                onGoLive = { tryGoLive() },
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+
+    if (showCreatorApply) {
+        var pitch by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreatorApply = false },
+            title = { Text("Apply to go live", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Viora approves creators before they can broadcast. Tell us what you will stream.", color = VioraMutedText, fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = pitch,
+                        onValueChange = { pitch = it },
+                        label = { Text("What will you stream?") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = VioraElectricPurple,
+                            unfocusedBorderColor = VioraBorder,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = pitch.isNotBlank(),
+                    onClick = {
+                        VioraRepository.applyForCreator(pitch)
+                        showCreatorApply = false
+                        notice = "Application sent. We will review it soon."
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = VioraElectricPurple)
+                ) { Text("Send application", color = Color.White) }
+            },
+            dismissButton = { TextButton(onClick = { showCreatorApply = false }) { Text("Cancel", color = VioraMutedText) } },
+            containerColor = VioraCardDark
+        )
     }
 }
 
