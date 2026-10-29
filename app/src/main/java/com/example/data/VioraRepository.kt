@@ -20,9 +20,8 @@ object VioraRepository {
 
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    // With a real backend configured the app starts signed out and restores the saved session.
-    // Without keys it stays in demo mode.
-    private val _isAuthenticated = MutableStateFlow(!SupabaseApi.isConfigured)
+    // Authentication must always be established by Supabase; missing configuration fails closed.
+    private val _isAuthenticated = MutableStateFlow(false)
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
     private val _isRestoring = MutableStateFlow(SupabaseApi.isConfigured)
@@ -251,8 +250,7 @@ object VioraRepository {
 
     suspend fun signIn(email: String, pass: String): Result<Unit> {
         if (!SupabaseApi.isConfigured) {
-            login(email, pass)
-            return Result.success(Unit)
+            return Result.failure(IllegalStateException("Supabase is not configured in this APK. Rebuild with the root .env file."))
         }
         return runCatching {
             SupabaseApi.signIn(email, pass)
@@ -263,8 +261,7 @@ object VioraRepository {
     /** Success(true) = signed in. Success(false) = account created, email confirmation needed. */
     suspend fun signUp(username: String, email: String, pass: String): Result<Boolean> {
         if (!SupabaseApi.isConfigured) {
-            signup(username, email, pass)
-            return Result.success(true)
+            return Result.failure(IllegalStateException("Supabase is not configured in this APK. Rebuild with the root .env file."))
         }
         return runCatching {
             val signedIn = SupabaseApi.signUp(email, pass, username, username)
