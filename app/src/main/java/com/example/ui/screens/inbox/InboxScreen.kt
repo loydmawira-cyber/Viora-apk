@@ -232,7 +232,7 @@ fun InboxScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
+            contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
         ) {
             if (filteredConversations.isEmpty()) {
                 item {
