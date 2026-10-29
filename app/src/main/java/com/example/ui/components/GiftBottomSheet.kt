@@ -36,6 +36,8 @@ fun GiftBottomSheet(
     onNavigateToRecharge: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val catalog by com.example.data.VioraRepository.giftCatalog.collectAsState()
+    val activeGifts = catalog.filter { it.isActive }
     var selectedGift by remember { mutableStateOf<VirtualGift?>(DEFAULT_GIFTS.firstOrNull()) }
     var selectedCombo by remember { mutableIntStateOf(1) }
     val comboOptions = listOf(1, 5, 10, 99)
@@ -104,7 +106,7 @@ fun GiftBottomSheet(
                     .fillMaxWidth()
                     .heightIn(max = 240.dp)
             ) {
-                items(DEFAULT_GIFTS) { gift ->
+                items(activeGifts) { gift ->
                     val isSelected = selectedGift?.id == gift.id
                     val canAfford = userCoinBalance >= (gift.coinCost * selectedCombo)
 
