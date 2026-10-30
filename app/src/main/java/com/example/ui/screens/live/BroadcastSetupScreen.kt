@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.VioraRepository
 import com.example.model.Country
+import com.example.model.detectDeviceCountry
 import com.example.model.LiveStream
 import com.example.model.POPULAR_COUNTRIES
 import com.example.model.StreamCategory
@@ -46,7 +47,9 @@ fun BroadcastSetupScreen(
 
     var title by remember { mutableStateOf("Evening Chill & Acoustic Vibes 🎶") }
     var selectedCategory by remember { mutableStateOf(StreamCategory.MUSIC) }
-    var selectedCountry by remember { mutableStateOf(POPULAR_COUNTRIES[1]) } // Default to US
+    // The broadcaster does not pick a country: it is detected from the phone and shown to viewers.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val selectedCountry = remember { detectDeviceCountry(context) }
     var isCameraFront by remember { mutableStateOf(true) }
     var isMicEnabled by remember { mutableStateOf(true) }
     var isCoinGated by remember { mutableStateOf(false) }
@@ -64,7 +67,6 @@ fun BroadcastSetupScreen(
     }
 
     val scrollState = rememberScrollState()
-    val countryScrollState = rememberScrollState()
 
     val previewSnapshotUrl = remember(selectedCategory) {
         when (selectedCategory) {
@@ -250,59 +252,24 @@ fun BroadcastSetupScreen(
             )
         )
 
-        // Broadcast Country Selector
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Broadcast Region & Country",
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "${selectedCountry.flagEmoji} ${selectedCountry.name}",
-                    color = VioraWarmGold,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(countryScrollState),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                POPULAR_COUNTRIES.filter { it.code != "ALL" }.forEach { country ->
-                    val isSelected = selectedCountry.code == country.code
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) VioraCoral else VioraCardDark)
-                            .border(
-                                width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) VioraWarmGold else VioraBorder,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .clickable { selectedCountry = country }
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(country.flagEmoji, fontSize = 14.sp)
-                        Text(
-                            text = country.code,
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
-                }
-            }
+        // Broadcast location (automatic)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Broadcasting from",
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+            Text(
+                text = "${selectedCountry.flagEmoji} ${selectedCountry.name}",
+                color = VioraWarmGold,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
 
         // Category Selection
