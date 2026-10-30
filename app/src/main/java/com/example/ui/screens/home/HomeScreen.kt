@@ -483,6 +483,14 @@ fun HomeScreen(
 
     // Direct Country / Region Picker Dialog
     if (showCountryPicker) {
+        // Popular countries plus any other country that has a live broadcast right now
+        val pickerCountries = remember(liveStreams) {
+            val known = POPULAR_COUNTRIES.map { it.code }.toSet()
+            POPULAR_COUNTRIES + liveStreams
+                .filter { it.status == StreamStatus.LIVE && it.countryCode !in known }
+                .distinctBy { it.countryCode }
+                .map { Country(it.countryCode, it.countryName, it.countryFlag) }
+        }
         AlertDialog(
             onDismissRequest = { showCountryPicker = false },
             title = {
@@ -496,7 +504,7 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(POPULAR_COUNTRIES) { country ->
+                        items(pickerCountries) { country ->
                             val isSelected = selectedCountry.code == country.code
                             val streamCount = if (country.code == "ALL") {
                                 liveStreams.count { it.status == StreamStatus.LIVE }
