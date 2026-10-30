@@ -196,12 +196,10 @@ fun VioraAppRoot(
         return
     }
 
-    // Go Live is allowed for approved creators and staff only, and never during a kill switch
+    // Anyone with an active account can go live (no approval), except during a kill switch
     val tryGoLive: () -> Unit = {
         if (platformSettings.streamsPaused) {
             notice = "Live streaming is temporarily paused by Viora"
-        } else if (currentUser.role == UserRole.VIEWER) {
-            showCreatorApply = true
         } else {
             currentScreen = AppScreen.BROADCAST_SETUP
         }
