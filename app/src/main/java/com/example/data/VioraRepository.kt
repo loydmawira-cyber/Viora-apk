@@ -1,5 +1,6 @@
 package com.example.data
 
+import android.content.Context
 import android.net.Uri
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import com.example.BuildConfig
 
@@ -324,7 +326,44 @@ object VioraRepository {
     }
 
     fun updateProfile(displayName: String, bio: String) {
-        _currentUser.update { it.copy(displayName = displayName, bio = bio) }
+        val name = displayName.trim().ifBlank { _currentUser.value.displayName }
+        val cleanBio = bio.trim()
+        _currentUser.update { it.copy(displayName = name, bio = cleanBio) }
+        if (SupabaseApi.isConfigured && _isAuthenticated.value) {
+            repoScope.launch {
+                runCatching {
+                    SupabaseApi.rpc(
+                        "update_my_profile",
+                        JSONObject().put("p_display_name", name).put("p_bio", cleanBio)
+                    )
+                }.onFailure { _serverMessage.value = it.message ?: "Could not save your profile" }
+            }
+        }
+    }
+
+    /**
+     * Crops the chosen photo to a square, uploads it and saves it as the profile picture.
+     * [onFinished] is called on the main thread with true when it worked.
+     */
+    fun updateAvatar(context: Context, uri: Uri, onFinished: (Boolean) -> Unit = {}) {
+        if (!SupabaseApi.isConfigured || !_isAuthenticated.value) {
+            // Demo mode: keep the picture on this phone only.
+            _currentUser.update { it.copy(avatarUrl = uri.toString()) }
+            onFinished(true)
+            return
+        }
+        val appContext = context.applicationContext
+        repoScope.launch {
+            val result = runCatching {
+                val jpeg = withContext(Dispatchers.IO) { AvatarImage.toSquareJpeg(appContext, uri) }
+                val url = SupabaseApi.uploadAvatar(jpeg)
+                SupabaseApi.rpc("update_my_profile", JSONObject().put("p_avatar_url", url))
+                url
+            }
+            result.onSuccess { url -> _currentUser.update { it.copy(avatarUrl = url) } }
+            result.onFailure { _serverMessage.value = it.message ?: "Could not update your profile picture" }
+            onFinished(result.isSuccess)
+        }
     }
 
     // Stream actions

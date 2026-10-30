@@ -182,6 +182,51 @@ object SupabaseApi {
     suspend fun invokeFunction(name: String, body: JSONObject): String =
         authed("POST", "/functions/v1/$name", body.toString())
 
+    /**
+     * Uploads a profile picture (JPEG bytes) to the public `avatars` bucket, in the signed-in
+     * user's own folder, and returns its public URL. Needs the 20261103000000_avatars.sql migration.
+     */
+    suspend fun uploadAvatar(jpegBytes: ByteArray): String {
+        val uid = userId ?: throw ApiException("Please sign in again")
+        if (System.currentTimeMillis() > expiresAtMs - 60_000L && hasSession()) refresh()
+        val objectPath = "$uid/avatar.jpg"
+
+        var token = accessToken ?: throw ApiException("Please sign in again")
+        var (code, text) = safe { putObject(objectPath, jpegBytes, token) }
+        if (code == 401 && refresh()) {
+            token = accessToken ?: throw ApiException("Please sign in again")
+            val retry = safe { putObject(objectPath, jpegBytes, token) }
+            code = retry.first
+            text = retry.second
+        }
+        if (code !in 200..299) throw ApiException(friendlyError(text, code))
+
+        // The version suffix makes the image loader fetch the new picture instead of the cached one.
+        return "$baseUrl/storage/v1/object/public/avatars/$objectPath?v=${System.currentTimeMillis()}"
+    }
+
+    private suspend fun putObject(path: String, bytes: ByteArray, token: String): Pair<Int, String> =
+        withContext(Dispatchers.IO) {
+            val conn = URL("$baseUrl/storage/v1/object/avatars/$path").openConnection() as HttpURLConnection
+            try {
+                conn.requestMethod = "POST"
+                conn.connectTimeout = 15_000
+                conn.readTimeout = 60_000
+                conn.setRequestProperty("apikey", anonKey)
+                conn.setRequestProperty("Authorization", "Bearer $token")
+                conn.setRequestProperty("Content-Type", "image/jpeg")
+                conn.setRequestProperty("x-upsert", "true")
+                conn.doOutput = true
+                conn.setFixedLengthStreamingMode(bytes.size)
+                conn.outputStream.use { it.write(bytes) }
+                val code = conn.responseCode
+                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                code to (stream?.bufferedReader()?.use { it.readText() } ?: "")
+            } finally {
+                conn.disconnect()
+            }
+        }
+
     suspend fun select(pathAndQuery: String): JSONArray =
         JSONArray(authed("GET", "/rest/v1/$pathAndQuery"))
 
@@ -251,7 +296,10 @@ object SupabaseApi {
                 call(method, path, body, token, extra)
             } catch (e: ApiException) {
                 // Token expired between the check and the call: refresh once and retry.
-                if (e.message?.contains("JWT", ignoreCase = true) == true && refresh()) {
+                val msg = e.message.orEmpty()
+                val sessionProblem = msg.contains("JWT", ignoreCase = true) ||
+                    msg.contains("Unauthorized", ignoreCase = true)
+                if (sessionProblem && refresh()) {
                     call(method, path, body, accessToken, extra)
                 } else {
                     throw e
@@ -319,6 +367,8 @@ object SupabaseApi {
             raw.contains("Email not confirmed", true) -> "Please confirm your email first. Check your inbox."
             raw.contains("Password should be", true) -> "Password is too short. Use at least 8 characters."
             raw.contains("rate limit", true) -> "Too many attempts. Please wait a minute and try again."
+            raw.contains("Bucket not found", true) ->
+                "Profile pictures are not set up yet. Run the avatars migration in Supabase."
             raw.contains("row-level security", true) -> "Not allowed right now. Your account may be muted, restricted or not approved for this."
             else -> raw
         }
