@@ -1243,7 +1243,7 @@ object VioraRepository {
         val category = StreamCategory.values().firstOrNull { it.name.equals(slug, ignoreCase = true) } ?: StreamCategory.CHATTING
         val hostName = host?.str("display_name").orEmpty().ifBlank { host?.str("username").orEmpty() }.ifBlank { "Host" }
         val id = r.str("id")
-        val global = POPULAR_COUNTRIES[0]
+        val country = countryFromIso(r.str("country_code"))
         return LiveStream(
             id = id,
             hostId = r.str("host_id"),
@@ -1260,9 +1260,9 @@ object VioraRepository {
             startedAtEpochMs = SupabaseApi.parseIso(r.str("started_at")),
             thumbnailGradientIndex = (id.hashCode() and 0x7fffffff) % 5,
             snapshotUrl = r.str("thumbnail_url"),
-            countryCode = global.code,
-            countryName = global.name,
-            countryFlag = global.flagEmoji,
+            countryCode = country.code,
+            countryName = country.name,
+            countryFlag = country.flagEmoji,
             pinnedComment = r.str("pinned_comment").ifBlank { null },
             tags = listOf("live", category.name.lowercase())
         )
@@ -1306,6 +1306,7 @@ object VioraRepository {
                     .put("host_id", stream.hostId)
                     .put("title", stream.title)
                     .put("agora_channel_name", stream.agoraChannelName)
+                    .put("country_code", stream.countryCode)
                     .put("thumbnail_url", stream.snapshotUrl)
                 categoryId(category)?.let { row.put("category_id", it) }
                 SupabaseApi.insert("live_rooms", row)
