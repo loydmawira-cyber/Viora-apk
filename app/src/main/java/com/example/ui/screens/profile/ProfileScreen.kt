@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +71,18 @@ fun ProfileScreen(
     var uploadCaption by remember { mutableStateOf("") }
     var uploadIsLocked by remember { mutableStateOf(true) }
     var uploadCoinPrice by remember { mutableLongStateOf(30L) }
+
+    // Profile picture: pick a photo, then crop, upload and save it.
+    val avatarContext = LocalContext.current
+    var avatarUploading by remember { mutableStateOf(false) }
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            avatarUploading = true
+            VioraRepository.updateAvatar(avatarContext, uri) { avatarUploading = false }
+        }
+    }
 
     // Android Zero-Permission Photo Picker
     val pickMediaLauncher = rememberLauncherForActivityResult(
@@ -137,13 +151,60 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AvatarView(
-                    imageUrl = currentUser.avatarUrl,
-                    displayName = currentUser.displayName,
-                    size = 76.dp,
-                    showBorder = true,
-                    isVerified = currentUser.isVerified
-                )
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !avatarUploading
+                        ) {
+                            avatarPicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                        .testTag("change_avatar_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AvatarView(
+                        imageUrl = currentUser.avatarUrl,
+                        displayName = currentUser.displayName,
+                        size = 76.dp,
+                        showBorder = true,
+                        isVerified = currentUser.isVerified
+                    )
+                    if (avatarUploading) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.55f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(VioraElectricPurple),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Change profile picture",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
