@@ -35,15 +35,28 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing authorization header" }, 401);
 
-    // Everything below runs as the caller, so row-level security applies.
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!jwt) return json({ error: "Missing access token" }, 401);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return json({ error: "Unauthorized user" }, 401);
+    // Prefer the key the app sent (same project, same key type). Fall back to the
+    // server's injected key if the header is absent.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const apiKey = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY") || "";
+    if (!supabaseUrl || !apiKey) {
+      return json({ error: "Server is missing SUPABASE_URL or an API key" }, 500);
+    }
+
+    // Everything below runs as the caller, so row-level security applies.
+    const supabase = createClient(supabaseUrl, apiKey, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // Verify the user's token explicitly instead of relying on a stored session.
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    if (userError || !user) {
+      return json({ error: `Unauthorized user: ${userError?.message ?? "no user for this token"}` }, 401);
+    }
 
     const { roomId, role } = await req.json() as { roomId?: string; role?: "publisher" | "subscriber" };
     if (!roomId) return json({ error: "Missing roomId" }, 400);
