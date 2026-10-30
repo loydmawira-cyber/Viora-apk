@@ -1,6 +1,9 @@
 package com.example.ui.screens.live
 
 import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.example.data.VioraRepository
 import com.example.model.Country
@@ -55,19 +59,6 @@ fun BroadcastSetupScreen(
     var isCoinGated by remember { mutableStateOf(false) }
     var entryCoinPrice by remember { mutableLongStateOf(25L) }
 
-    // Permissions state
-    var hasCameraPermission by remember { mutableStateOf(true) }
-    var hasAudioPermission by remember { mutableStateOf(true) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        hasCameraPermission = results[Manifest.permission.CAMERA] ?: true
-        hasAudioPermission = results[Manifest.permission.RECORD_AUDIO] ?: true
-    }
-
-    val scrollState = rememberScrollState()
-
     val previewSnapshotUrl = remember(selectedCategory) {
         when (selectedCategory) {
             StreamCategory.MUSIC -> "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
@@ -78,6 +69,44 @@ fun BroadcastSetupScreen(
             else -> "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800"
         }
     }
+
+    // Permissions: always read the real state from Android, never assume it is granted.
+    fun isGranted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    var hasCameraPermission by remember { mutableStateOf(isGranted(Manifest.permission.CAMERA)) }
+    var hasAudioPermission by remember { mutableStateOf(isGranted(Manifest.permission.RECORD_AUDIO)) }
+    var permissionDenied by remember { mutableStateOf(false) }
+    var startAfterPermission by remember { mutableStateOf(false) }
+    val permissionsOk = hasCameraPermission && hasAudioPermission
+
+    val startBroadcast: () -> Unit = {
+        val newStream = VioraRepository.createLiveRoom(
+            title = title,
+            category = selectedCategory,
+            country = selectedCountry,
+            isCoinGated = isCoinGated,
+            entryCoinPrice = entryCoinPrice,
+            snapshotUrl = previewSnapshotUrl
+        )
+        onBroadcastStarted(newStream)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        hasCameraPermission = isGranted(Manifest.permission.CAMERA)
+        hasAudioPermission = isGranted(Manifest.permission.RECORD_AUDIO)
+        permissionDenied = !(hasCameraPermission && hasAudioPermission)
+        if (!permissionDenied && startAfterPermission) {
+            startAfterPermission = false
+            startBroadcast()
+        } else {
+            startAfterPermission = false
+        }
+    }
+
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
@@ -354,26 +383,42 @@ fun BroadcastSetupScreen(
                     Icon(
                         imageVector = Icons.Default.Security,
                         contentDescription = null,
-                        tint = VioraSuccessGreen,
+                        tint = if (permissionsOk) VioraSuccessGreen else VioraWarmGold,
                         modifier = Modifier.size(24.dp)
                     )
                     Column {
                         Text("Broadcaster Permissions", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("Camera & Mic Access Granted", color = VioraMutedText, fontSize = 11.sp)
+                        Text(
+                            text = when {
+                                permissionsOk -> "Camera & Mic Access Granted"
+                                permissionDenied -> "Blocked. Allow camera and mic in Settings to go live"
+                                else -> "Camera and mic access needed to go live"
+                            },
+                            color = VioraMutedText,
+                            fontSize = 11.sp
+                        )
                     }
                 }
 
                 Button(
                     onClick = {
-                        permissionLauncher.launch(
-                            arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
-                        )
+                        if (permissionDenied) {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = android.net.Uri.fromParts("package", context.packageName, null)
+                                }
+                            )
+                        } else {
+                            permissionLauncher.launch(
+                                arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+                            )
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = VioraSurfaceVariant),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Verify", color = Color.White, fontSize = 11.sp)
+                    Text(if (permissionDenied) "Settings" else if (permissionsOk) "Verify" else "Allow", color = Color.White, fontSize = 11.sp)
                 }
             }
         }
@@ -487,15 +532,17 @@ fun BroadcastSetupScreen(
         // Start Live Button
         Button(
             onClick = {
-                val newStream = VioraRepository.createLiveRoom(
-                    title = title,
-                    category = selectedCategory,
-                    country = selectedCountry,
-                    isCoinGated = isCoinGated,
-                    entryCoinPrice = entryCoinPrice,
-                    snapshotUrl = previewSnapshotUrl
-                )
-                onBroadcastStarted(newStream)
+                // Re-check now: the user may have allowed access in Settings since the last look.
+                hasCameraPermission = isGranted(Manifest.permission.CAMERA)
+                hasAudioPermission = isGranted(Manifest.permission.RECORD_AUDIO)
+                if (hasCameraPermission && hasAudioPermission) {
+                    startBroadcast()
+                } else {
+                    startAfterPermission = true
+                    permissionLauncher.launch(
+                        arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+                    )
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
